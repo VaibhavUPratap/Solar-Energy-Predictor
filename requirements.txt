@@ -1,3 +1,9 @@
-flask
+Flask
+Flask-CORS
 requests
 python-dotenv
+scikit-learn
+numpy
+pandas
+joblib
+Werkzeug

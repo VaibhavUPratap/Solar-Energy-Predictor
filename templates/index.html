@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Energy Predictor - AI-Powered Solar Forecasting</title>
+    
+    <!-- Leaflet CSS for map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header class="header">
+            <div class="logo-section">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Solar Logo" class="logo" onerror="this.style.display='none'">
+                <h1>🌞 Solar Energy Predictor</h1>
+            </div>
+            <p class="subtitle">AI-Powered Real-Time Solar Power Forecasting</p>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+            <!-- Input Section -->
+            <section class="card input-section">
+                <h2>🌍 Enter Location</h2>
+                <form id="predictionForm">
+                    <div class="form-group">
+                        <label for="cityInput">City Name</label>
+                        <input 
+                            type="text" 
+                            id="cityInput" 
+                            placeholder="e.g., London, Tokyo, New York" 
+                            required 
+                            autocomplete="off"
+                        >
+                    </div>
+                    <button type="submit" id="predictBtn" class="btn-primary">
+                        <span id="btnText">🔮 Predict Solar Output</span>
+                        <span id="btnLoader" class="loader" style="display: none;"></span>
+                    </button>
+                </form>
+                
+                <div class="quick-links">
+                    <a href="/api/history-page" class="link-button">📊 View History</a>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="card results-section" id="resultsSection" style="display: none;">
+                <h2>⚡ Prediction Results</h2>
+                
+                <div class="result-grid">
+                    <div class="result-item highlight">
+                        <div class="result-label">Predicted Solar Power</div>
+                        <div class="result-value" id="predictedPower">-- W</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-label">🌡️ Temperature</div>
+                        <div class="result-value" id="temperature">--°C</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-label">💨 Wind Speed</div>
+                        <div class="result-value" id="windSpeed">-- m/s</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-label">☁️ Cloud Coverage</div>
+                        <div class="result-value" id="clouds">--%</div>
+                    </div>
+                </div>
+
+                <div class="location-info">
+                    <h3 id="locationName">--</h3>
+                    <p id="weatherDescription">--</p>
+                </div>
+
+                <!-- Solar Parameters -->
+                <div class="solar-params">
+                    <h3>☀️ Solar Irradiance Parameters</h3>
+                    <div class="param-grid">
+                        <div class="param-item">
+                            <span>Direct POA:</span>
+                            <strong id="poaDirect">--</strong> W/m²
+                        </div>
+                        <div class="param-item">
+                            <span>Sky Diffuse:</span>
+                            <strong id="poaSky">--</strong> W/m²
+                        </div>
+                        <div class="param-item">
+                            <span>Ground Diffuse:</span>
+                            <strong id="poaGround">--</strong> W/m²
+                        </div>
+                        <div class="param-item">
+                            <span>Solar Elevation:</span>
+                            <strong id="solarElevation">--</strong>°
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Map Section -->
+            <section class="card map-section">
+                <h2>🗺️ Location Map</h2>
+                <div id="map"></div>
+            </section>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Built with Flask, Machine Learning & OpenWeatherMap API</p>
+            <p>© 2025 Solar Energy Predictor | <a href="https://github.com" target="_blank">GitHub</a></p>
+        </footer>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

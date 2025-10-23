@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction History - Solar Energy Predictor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>📊 Prediction History</h1>
+            <p class="subtitle">Recent Solar Power Predictions</p>
+        </header>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <a href="/" class="btn-secondary">← Back to Predictor</a>
+        </div>
+
+        <!-- History Table -->
+        <section class="card history-section">
+            {% if error %}
+                <div class="error-message" style="display: block;">
+                    ⚠️ Error loading history: {{ error }}
+                </div>
+            {% elif predictions %}
+                <div class="table-container">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Timestamp</th>
+                                <th>City</th>
+                                <th>Coordinates</th>
+                                <th>Temperature (°C)</th>
+                                <th>Wind Speed (m/s)</th>
+                                <th>Predicted Power (W)</th>
+                                <th>Solar Elevation (°)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pred in predictions %}
+                            <tr>
+                                <td>{{ pred.id }}</td>
+                                <td>{{ pred.timestamp[:19] }}</td>
+                                <td><strong>{{ pred.city }}</strong></td>
+                                <td>{{ "%.2f"|format(pred.latitude) }}, {{ "%.2f"|format(pred.longitude) }}</td>
+                                <td>{{ "%.1f"|format(pred.temp_air) }}</td>
+                                <td>{{ "%.1f"|format(pred.wind_speed) }}</td>
+                                <td class="power-value">{{ "%.2f"|format(pred.predicted_P) }}</td>
+                                <td>{{ "%.1f"|format(pred.solar_elevation) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="table-stats">
+                    <p>📈 Total Predictions: <strong>{{ predictions|length }}</strong></p>
+                    <p>🕒 Last Updated: <strong>{{ predictions[0].timestamp[:19] if predictions else 'N/A' }}</strong></p>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>📭 No predictions yet!</p>
+                    <p>Make your first prediction on the <a href="/">home page</a>.</p>
+                </div>
+            {% endif %}
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>© 2025 Solar Energy Predictor</p>
+        </footer>
+    </div>
+</body>
+</html>
