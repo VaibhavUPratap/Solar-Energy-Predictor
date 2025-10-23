@@ -5,6 +5,13 @@ A production-ready Flask web application that predicts real-time solar power out
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Flask](https://img.shields.io/badge/Flask-3.0-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+# 🌞 Solar Energy Predictor
+
+A production-ready Flask web application that predicts real-time solar power output using machine learning and live weather data.
+
+![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
+![Flask](https://img.shields.io/badge/Flask-3.0-green.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ## 📋 Features
 
@@ -72,6 +79,69 @@ SolarEnergyPredictor/
 2. **Create virtual environment**
    ```bash
    python -m venv venv
+
+### API response format (JSON schemas)
+
+POST `/api/predict` (success)
+
+```json
+{
+   "success": true,
+   "prediction": {
+      "city": "London",
+      "country": "GB",
+      "latitude": 51.5074,
+      "longitude": -0.1278,
+      "predicted_power": 756.42,    /* number (W) */
+      "unit": "W",
+      "timestamp": "2025-10-16T10:30:00"
+   },
+   "weather": {
+      "temperature": 18.5,          /* °C */
+      "wind_speed": 3.2,            /* m/s */
+      "clouds": 40,                 /* % */
+      "humidity": 65,               /* % */
+      "description": "scattered clouds"
+   },
+   "solar_parameters": {
+      "poa_direct": 480.0,          /* W/m² */
+      "poa_sky_diffuse": 112.5,     /* W/m² */
+      "poa_ground_diffuse": 50.0,   /* W/m² */
+      "solar_elevation": 45.0       /* degrees */
+   }
+}
+```
+
+POST `/api/predict` (error)
+
+```json
+{
+   "error": "Prediction failed",
+   "message": "Detailed error message"
+}
+```
+
+GET `/api/history` (success)
+
+```json
+{
+   "success": true,
+   "count": 10,
+   "predictions": [
+      {
+         "id": 1,
+         "timestamp": "2025-10-16T10:30:00",
+         "city": "London",
+         "latitude": 51.5074,
+         "longitude": -0.1278,
+         "temperature": 18.5,
+         "wind_speed": 3.2,
+         "predicted_power": 756.42
+      }
+   ]
+}
+```
+
    
    # On Windows
    venv\Scripts\activate
@@ -116,6 +186,67 @@ SolarEnergyPredictor/
    "
    ```
 
+5. **Model training & feature contract**
+
+The application expects a model trained on a specific feature layout:
+
+- The feature vector length is 246.
+   - First 240 features are one-hot encodings for locations (location dummy columns).
+   - Last 6 features (indices 240..245) are numeric features in this order:
+      240: time_stamp (for example, hour of day or a numeric time feature)
+      241: poa_direct (W/m²)
+      242: poa_sky_diffuse (W/m²)
+      243: solar_elevation (degrees)
+      244: wind_speed (m/s)
+      245: temp_air (°C)
+
+It's strongly recommended to train the model with a pandas.DataFrame containing the same column names used at inference time. Save the column names to `column_names.json` so the server's `services.predictor.prid` can construct the correct one-hot vector.
+
+Example training script (recommended approach using DataFrame and column names):
+
+```python
+import os
+import json
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+
+# Example: create dummy column names and training data
+location_cols = [f"loc_{i}" for i in range(240)]
+numeric_cols = ["time_stamp","poa_direct","poa_sky_diffuse","solar_elevation","wind_speed","temp_air"]
+columns = location_cols + numeric_cols  # length 246
+
+# Create dummy data (N x 246)
+N = 500
+X = np.zeros((N, len(columns)))
+# populate some random location dummies and numeric features
+for i in range(N):
+      loc_idx = np.random.randint(0, 240)
+      X[i, loc_idx] = 1
+X[:, 240:] = np.random.rand(N, 6) * 1000
+
+df = pd.DataFrame(X, columns=columns)
+y = df['poa_direct'] * 0.8 + df['poa_sky_diffuse'] * 0.3 + np.random.rand(N) * 50
+
+# Train model and save with joblib
+os.makedirs('models', exist_ok=True)
+model = LinearRegression()
+model.fit(df, y)
+joblib.dump(model, 'models/Linear_Regression.pkl')
+
+# Save column names so the server can reconstruct the 246-length vector
+with open('column_names.json', 'w') as f:
+      json.dump(columns, f)
+
+print('✓ Model and column_names.json saved')
+```
+
+Notes:
+
+- Saving `column_names.json` is important to allow `services.predictor.prid` to set the correct location dummy column by name.
+- Training with a DataFrame that preserves column names avoids sklearn warnings about feature names at inference time.
+- Version your model files (include model metadata like training date and scikit-learn version) to avoid unpickling issues across sklearn versions.
 6. **Run the application**
    ```bash
    python run.py
@@ -223,6 +354,54 @@ python -m pytest tests/test_prediction.py -v
    feature vector zeroed (default behavior used by the original reference).
 - For environments without `pvlib` installed (test/dev), the repository contains
    a minimal `pvlib.py` stub to allow running tests without installing that dependency.
+
+## 🛠️ Developer notes & troubleshooting
+
+If you can't start the app with `python run.py`, try these steps first:
+
+- 1) Check for circular imports
+   - A common startup error is an ImportError referencing a "partially initialized module".
+   - This repo's app used to export a route from `services.__init__` which caused a circular import.
+      Do not import route handlers from `services.__init__`; `services` should only export service classes.
+
+- 2) Run sequence
+   ```bash
+   # from project root
+   python -m venv venv
+   venv\Scripts\activate    # Windows
+   pip install -r requirements.txt
+   python run.py
+   ```
+
+- 3) If you see sklearn warnings like:
+   "X does not have valid feature names, but LinearRegression was fitted with feature names"
+   - This is a warning only; predictions still work. To remove it:
+      - Retrain/save the model with consistent feature names (recommended), or
+      - Wrap inputs in a pandas.DataFrame with the original column names before calling `model.predict`.
+
+- 4) `pvlib` missing locally
+   - For tests and lightweight development we provide a small `pvlib.py` stub. If you prefer the real package,
+      install it with `pip install pvlib` and then remove the `pvlib.py` stub file.
+
+- 5) Database file and migrations
+   - The app initializes a SQLite DB at `database/database.db` automatically on first run.
+   - If DB schema changes or you want a clean slate, stop the server and delete `database/database.db`.
+
+- 6) Tests
+   - pytest is optional. If you want to run tests with pytest:
+      ```bash
+      pip install pytest
+      python -m pytest -q
+      ```
+
+### Short change-log (recent developer changes)
+
+- Added `services/predictor.py` — helper `prid()` builds the full 246-feature vector and calls the model.
+- Updated `/api/predict` route to use the `prid` helper with a safe fallback to `model.predict()`.
+- Added `tests/test_predictor.py` to validate the `prid` helper returns non-negative predictions.
+- Added small `pvlib.py` stub to support running tests without installing heavy dependencies.
+- Fixed a circular import by removing route exports from `services.__init__`.
+
 
 
 ## 📊 Database Schema
