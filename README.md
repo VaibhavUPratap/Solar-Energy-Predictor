@@ -503,7 +503,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Your Name** - *Initial work*
+- **Vaibhav U Pratap** - *Web Dev*
+- **Zishaanmalik** - *ML Model Training*
+- **Tharun V N** - *Front-end*
+- **Rohit V** - *Database*
 
 ## 🙏 Acknowledgments
 
