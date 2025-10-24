@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karnataka Solar Hotspots - Solar Energy Predictor</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        accent: {
+                            50: '#faf5ff',
+                            100: '#f3e8ff',
+                            200: '#e9d5ff',
+                            300: '#d8b4fe',
+                            400: '#c084fc',
+                            500: '#a855f7',
+                            600: '#9333ea',
+                            700: '#7c3aed',
+                            800: '#6b21a8',
+                            900: '#581c87',
+                        },
+                        neon: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            200: '#99f6e4',
+                            300: '#5eead4',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                            900: '#134e4a',
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'bounce-slow': 'bounce 2s infinite',
+                        'spin-slow': 'spin 3s linear infinite',
+                        'fadeIn': 'fadeIn 0.5s ease-in-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Leaflet CSS for map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/karnataka.css') }}">
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header Section -->
+        <header class="text-center mb-12">
+            <div class="flex items-center justify-center gap-4 mb-4 flex-wrap">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Solar Logo" class="w-16 h-16 rounded-full shadow-lg shadow-primary-500/30" onerror="this.style.display='none'">
+                <h1 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-500 bg-clip-text text-transparent animate-pulse-slow">
+                    🌞 Karnataka Solar Hotspots
+                </h1>
+            </div>
+            <p class="text-xl text-slate-300 font-medium mb-6">Real-Time Solar Power Predictions Across Karnataka</p>
+            <div class="flex items-center justify-center gap-4 text-slate-400">
+                <span>Last Updated: <span id="lastUpdated" class="text-cyan-400 font-semibold">--</span></span>
+                <button id="refreshBtn" class="bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg transition-all duration-300 hover:scale-105 flex items-center gap-2">
+                    🔄 Refresh
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="flex gap-4 mb-8 justify-center">
+            <a href="/" class="bg-slate-700/50 hover:bg-cyan-600/20 border border-cyan-500 text-cyan-400 hover:text-cyan-300 px-6 py-3 rounded-xl transition-all duration-300 font-medium hover:scale-105">
+                🏠 Home
+            </a>
+            <a href="/api/history-page" class="bg-slate-700/50 hover:bg-purple-600/20 border border-purple-500 text-purple-400 hover:text-purple-300 px-6 py-3 rounded-xl transition-all duration-300 font-medium hover:scale-105">
+                📊 History
+            </a>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+            <!-- Map Section -->
+            <section class="xl:col-span-2 bg-slate-800/30 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-cyan-500/20 hover:border-cyan-400/50 transition-all duration-300 hover:shadow-cyan-500/20 hover:shadow-2xl">
+                <h2 class="text-2xl font-bold text-cyan-400 mb-6 flex items-center gap-2">
+                    🗺️ Karnataka Solar Map
+                </h2>
+                <div id="karnatakaMap" class="rounded-xl border-2 border-slate-600 h-96 mb-4"></div>
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center gap-3 text-sm">
+                        <span class="w-5 h-5 rounded-full bg-green-500 border-2 border-white"></span>
+                        <span class="text-slate-300">High Solar Potential (800+ W)</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-sm">
+                        <span class="w-5 h-5 rounded-full bg-yellow-500 border-2 border-white"></span>
+                        <span class="text-slate-300">Medium Solar Potential (400-800 W)</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-sm">
+                        <span class="w-5 h-5 rounded-full bg-red-500 border-2 border-white"></span>
+                        <span class="text-slate-300">Low Solar Potential (<400 W)</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cities Grid -->
+            <section class="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-purple-500/20 hover:border-purple-400/50 transition-all duration-300 hover:shadow-purple-500/20 hover:shadow-2xl">
+                <h2 class="text-2xl font-bold text-purple-400 mb-6 flex items-center gap-2">
+                    🏙️ City Predictions
+                </h2>
+                <div id="citiesGrid" class="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto">
+                    <!-- Cities will be populated by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Statistics Section -->
+            <section class="xl:col-span-3 bg-slate-800/30 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-cyan-500/20 hover:border-cyan-400/50 transition-all duration-300 hover:shadow-cyan-500/20 hover:shadow-2xl">
+                <h2 class="text-2xl font-bold text-cyan-400 mb-6 flex items-center gap-2">
+                    📊 Karnataka Solar Statistics
+                </h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div class="bg-slate-700/50 rounded-xl p-6 text-center border border-slate-600/50">
+                        <div class="text-3xl font-bold text-cyan-400 mb-2" id="totalCities">--</div>
+                        <div class="text-sm text-slate-400">Cities Monitored</div>
+                    </div>
+                    <div class="bg-slate-700/50 rounded-xl p-6 text-center border border-slate-600/50">
+                        <div class="text-3xl font-bold text-purple-400 mb-2" id="avgPower">-- W</div>
+                        <div class="text-sm text-slate-400">Average Power</div>
+                    </div>
+                    <div class="bg-slate-700/50 rounded-xl p-6 text-center border border-slate-600/50">
+                        <div class="text-3xl font-bold text-cyan-400 mb-2" id="maxPower">-- W</div>
+                        <div class="text-sm text-slate-400">Highest Power</div>
+                    </div>
+                    <div class="bg-slate-700/50 rounded-xl p-6 text-center border border-slate-600/50">
+                        <div class="text-3xl font-bold text-purple-400 mb-2" id="bestCity">--</div>
+                        <div class="text-sm text-slate-400">Best Location</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
+            <div class="text-center text-white">
+                <div class="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+                <p class="text-lg">Updating Karnataka solar predictions...</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center py-8 text-slate-400 border-t border-slate-700/50 mt-12">
+            <p class="mb-2">Built with Flask, Machine Learning & OpenWeatherMap API</p>
+            <p>© 2025 Solar Energy Predictor | <a href="https://github.com" target="_blank" class="text-cyan-400 hover:text-cyan-300 transition-colors duration-300">GitHub</a></p>
+        </footer>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/karnataka.js') }}"></script>
+</body>
+</html>

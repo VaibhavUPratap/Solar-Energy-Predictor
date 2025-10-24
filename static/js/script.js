@@ -63,10 +63,10 @@ async function makePrediction(city) {
     try {
         // Show loading state
         predictBtn.disabled = true;
-        btnText.style.display = 'none';
-        btnLoader.style.display = 'block';
-        errorMessage.style.display = 'none';
-        resultsSection.style.display = 'none';
+        btnText.classList.add('hidden');
+        btnLoader.classList.remove('hidden');
+        errorMessage.classList.add('hidden');
+        resultsSection.classList.add('hidden');
 
         console.log(`🔍 Fetching prediction for: ${city}`);
 
@@ -99,8 +99,8 @@ async function makePrediction(city) {
     } finally {
         // Reset button state
         predictBtn.disabled = false;
-        btnText.style.display = 'block';
-        btnLoader.style.display = 'none';
+        btnText.classList.remove('hidden');
+        btnLoader.classList.add('hidden');
     }
 }
 
@@ -130,8 +130,8 @@ function displayResults(data) {
     document.getElementById('solarElevation').textContent = data.solar_parameters.solar_elevation;
     
     // Show results with animation
-    resultsSection.style.display = 'block';
-    resultsSection.style.animation = 'fadeIn 0.5s ease';
+    resultsSection.classList.remove('hidden');
+    resultsSection.classList.add('animate-fadeIn');
 }
 
 /**
@@ -163,11 +163,11 @@ function updateMap(lat, lon, city) {
 function showError(message) {
     const errorMessage = document.getElementById('errorMessage');
     errorMessage.textContent = `⚠️ ${message}`;
-    errorMessage.style.display = 'block';
+    errorMessage.classList.remove('hidden');
     
     // Hide error after 5 seconds
     setTimeout(() => {
-        errorMessage.style.display = 'none';
+        errorMessage.classList.add('hidden');
     }, 5000);
 }
 

@@ -1,76 +1,143 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prediction History - Solar Energy Predictor</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        accent: {
+                            50: '#faf5ff',
+                            100: '#f3e8ff',
+                            200: '#e9d5ff',
+                            300: '#d8b4fe',
+                            400: '#c084fc',
+                            500: '#a855f7',
+                            600: '#9333ea',
+                            700: '#7c3aed',
+                            800: '#6b21a8',
+                            900: '#581c87',
+                        },
+                        neon: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            200: '#99f6e4',
+                            300: '#5eead4',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                            900: '#134e4a',
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'bounce-slow': 'bounce 2s infinite',
+                        'spin-slow': 'spin 3s linear infinite',
+                        'fadeIn': 'fadeIn 0.5s ease-in-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
-    <div class="container">
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
         <!-- Header -->
-        <header class="header">
-            <h1>📊 Prediction History</h1>
-            <p class="subtitle">Recent Solar Power Predictions</p>
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-500 bg-clip-text text-transparent animate-pulse-slow mb-4">
+                📊 Prediction History
+            </h1>
+            <p class="text-xl text-slate-300 font-medium">Recent Solar Power Predictions</p>
         </header>
 
         <!-- Navigation -->
-        <div class="navigation">
-            <a href="/" class="btn-secondary">← Back to Predictor</a>
+        <div class="flex justify-center mb-8">
+            <a href="/" class="bg-slate-700/50 hover:bg-cyan-600/20 border border-cyan-500 text-cyan-400 hover:text-cyan-300 px-6 py-3 rounded-xl transition-all duration-300 font-medium hover:scale-105">
+                ← Back to Predictor
+            </a>
         </div>
 
         <!-- History Table -->
-        <section class="card history-section">
+        <section class="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-cyan-500/20 hover:border-cyan-400/50 transition-all duration-300 hover:shadow-cyan-500/20 hover:shadow-2xl">
             {% if error %}
-                <div class="error-message" style="display: block;">
+                <div class="bg-red-500/20 border border-red-500 text-red-400 p-4 rounded-xl text-center animate-pulse">
                     ⚠️ Error loading history: {{ error }}
                 </div>
             {% elif predictions %}
-                <div class="table-container">
-                    <table class="history-table">
-                        <thead>
+                <div class="overflow-x-auto rounded-xl border border-slate-600">
+                    <table class="w-full bg-slate-700/50">
+                        <thead class="bg-slate-800">
                             <tr>
-                                <th>#</th>
-                                <th>Timestamp</th>
-                                <th>City</th>
-                                <th>Coordinates</th>
-                                <th>Temperature (°C)</th>
-                                <th>Wind Speed (m/s)</th>
-                                <th>Predicted Power (W)</th>
-                                <th>Solar Elevation (°)</th>
+                                <th class="px-4 py-3 text-left text-cyan-400 font-semibold">#</th>
+                                <th class="px-4 py-3 text-left text-cyan-400 font-semibold">Timestamp</th>
+                                <th class="px-4 py-3 text-left text-cyan-400 font-semibold">City</th>
+                                <th class="px-4 py-3 text-left text-cyan-400 font-semibold">Coordinates</th>
+                                <th class="px-4 py-3 text-left text-cyan-400 font-semibold">Temperature (°C)</th>
+                                <th class="px-4 py-3 text-left text-cyan-400 font-semibold">Wind Speed (m/s)</th>
+                                <th class="px-4 py-3 text-left text-cyan-400 font-semibold">Predicted Power (W)</th>
+                                <th class="px-4 py-3 text-left text-cyan-400 font-semibold">Solar Elevation (°)</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for pred in predictions %}
-                            <tr>
-                                <td>{{ pred.id }}</td>
-                                <td>{{ pred.timestamp[:19] }}</td>
-                                <td><strong>{{ pred.city }}</strong></td>
-                                <td>{{ "%.2f"|format(pred.latitude) }}, {{ "%.2f"|format(pred.longitude) }}</td>
-                                <td>{{ "%.1f"|format(pred.temp_air) }}</td>
-                                <td>{{ "%.1f"|format(pred.wind_speed) }}</td>
-                                <td class="power-value">{{ "%.2f"|format(pred.predicted_P) }}</td>
-                                <td>{{ "%.1f"|format(pred.solar_elevation) }}</td>
+                            <tr class="border-b border-slate-600 hover:bg-slate-600/30 transition-colors duration-200">
+                                <td class="px-4 py-3 text-slate-300">{{ pred.id }}</td>
+                                <td class="px-4 py-3 text-slate-300">{{ pred.timestamp[:19] }}</td>
+                                <td class="px-4 py-3 text-white font-semibold">{{ pred.city }}</td>
+                                <td class="px-4 py-3 text-slate-300">{{ "%.2f"|format(pred.latitude) }}, {{ "%.2f"|format(pred.longitude) }}</td>
+                                <td class="px-4 py-3 text-slate-300">{{ "%.1f"|format(pred.temp_air) }}</td>
+                                <td class="px-4 py-3 text-slate-300">{{ "%.1f"|format(pred.wind_speed) }}</td>
+                                <td class="px-4 py-3 text-cyan-400 font-bold">{{ "%.2f"|format(pred.predicted_P) }}</td>
+                                <td class="px-4 py-3 text-slate-300">{{ "%.1f"|format(pred.solar_elevation) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
                 
-                <div class="table-stats">
-                    <p>📈 Total Predictions: <strong>{{ predictions|length }}</strong></p>
-                    <p>🕒 Last Updated: <strong>{{ predictions[0].timestamp[:19] if predictions else 'N/A' }}</strong></p>
+                <div class="flex flex-col sm:flex-row gap-4 mt-6 p-4 bg-slate-700/30 rounded-xl">
+                    <p class="text-slate-300">📈 Total Predictions: <strong class="text-cyan-400">{{ predictions|length }}</strong></p>
+                    <p class="text-slate-300">🕒 Last Updated: <strong class="text-purple-400">{{ predictions[0].timestamp[:19] if predictions else 'N/A' }}</strong></p>
                 </div>
             {% else %}
-                <div class="empty-state">
-                    <p>📭 No predictions yet!</p>
-                    <p>Make your first prediction on the <a href="/">home page</a>.</p>
+                <div class="text-center py-12 text-slate-400">
+                    <p class="text-2xl mb-4">📭 No predictions yet!</p>
+                    <p class="mb-4">Make your first prediction on the <a href="/" class="text-cyan-400 hover:text-cyan-300 transition-colors duration-300 font-semibold">home page</a>.</p>
                 </div>
             {% endif %}
         </section>
 
         <!-- Footer -->
-        <footer class="footer">
+        <footer class="text-center py-8 text-slate-400 border-t border-slate-700/50 mt-12">
             <p>© 2025 Solar Energy Predictor</p>
         </footer>
     </div>
