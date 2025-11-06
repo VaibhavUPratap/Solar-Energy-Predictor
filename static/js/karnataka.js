@@ -92,9 +92,9 @@ function displayKarnatakaData(predictions) {
     
     citiesGrid.innerHTML = sortedPredictions.map(prediction => {
         const powerClass = getPowerClass(prediction.predicted_power);
-        const bgColor = powerClass === 'high-power' ? 'bg-green-500/10 border-green-500/30' : 
-                       powerClass === 'medium-power' ? 'bg-yellow-500/10 border-yellow-500/30' : 
-                       'bg-red-500/10 border-red-500/30';
+    const bgColor = powerClass === 'high-power' ? 'bg-cyan-500/10 border-cyan-500/30' : 
+               powerClass === 'medium-power' ? 'bg-purple-500/10 border-purple-500/30' : 
+               'bg-amber-500/10 border-amber-500/30';
         
         return `
             <div class="bg-slate-700/50 ${bgColor} border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg" onclick="focusOnCity(${prediction.latitude}, ${prediction.longitude})">
@@ -172,8 +172,8 @@ function updateStatistics(predictions) {
  * Get power classification
  */
 function getPowerClass(power) {
-    if (power >= 800) return 'high-power';
-    if (power >= 400) return 'medium-power';
+    if (power >= 500) return 'high-power';
+    if (power >= 300) return 'medium-power';
     return 'low-power';
 }
 

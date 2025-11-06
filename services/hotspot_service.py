@@ -1,0 +1,171 @@
+"""Hotspot prediction service using the project's ML model."""
+from __future__ import annotations
+
+from datetime import datetime, timezone
+import threading
+from typing import Dict, Iterable, List, Optional, Tuple
+
+import numpy as np
+
+from services.predictor import prid
+from services.solar_data import get_solar_data_from_open_meteo, get_fallback_solar_data
+
+KARNATAKA_LOCATIONS: Dict[str, Tuple[float, float]] = {
+    "Bangalore": (12.9716, 77.5946),
+    "Mysore": (12.2958, 76.6394),
+    "Hubli": (15.3647, 75.1240),
+    "Mangalore": (12.9141, 74.8560),
+    "Belgaum": (15.8497, 74.4977),
+    "Gulbarga": (17.3297, 76.8343),
+    "Davanagere": (14.4669, 75.9264),
+    "Bellary": (15.1420, 76.9180),
+    "Bijapur": (16.8302, 75.7100),
+    "Shimoga": (13.9299, 75.5681),
+    "Tumkur": (13.3399, 77.1013),
+    "Raichur": (16.2076, 77.3463),
+    "Bidar": (17.9133, 77.5301),
+    "Hospet": (15.2667, 76.4000),
+    "Gadag": (15.4167, 75.6167),
+    "Chitradurga": (14.2234, 76.4004),
+    "Kolar": (13.1370, 78.1330),
+    "Mandya": (12.5242, 76.8958),
+    "Hassan": (13.0034, 76.1004),
+    "Chikmagalur": (13.3161, 75.7720),
+    "Udupi": (13.3409, 74.7421),
+    "Karwar": (14.8136, 74.1299),
+    "Chamrajanagar": (11.9261, 76.9397),
+    "Kodagu": (12.3372, 75.8069),
+    "Chikkaballapur": (13.4355, 77.7315),
+    "Ramanagara": (12.7154, 77.2815),
+    "Yadgir": (16.7650, 77.1350),
+    "Koppal": (15.3548, 76.2039),
+    "Vijayapura": (16.8302, 75.7100),
+    "Kalaburagi": (17.3297, 76.8343),
+}
+
+
+class HotspotService:
+    """Encapsulates Karnataka hotspot prediction refresh logic."""
+
+    def __init__(
+        self,
+        model: Optional[object] = None,
+        model_path: Optional[str] = None,
+        locations: Optional[Dict[str, Tuple[float, float]]] = None,
+        update_interval: int = 3600,
+    ) -> None:
+        self._model = model
+        self._model_path = model_path
+        self._locations = locations or dict(KARNATAKA_LOCATIONS)
+        self._update_interval = max(60, int(update_interval))
+        self._lock = threading.Lock()
+        self._predictions: List[Dict[str, float]] = []
+        self._last_update: Optional[datetime] = None
+
+    @property
+    def locations(self) -> Dict[str, Tuple[float, float]]:
+        return self._locations
+
+    @property
+    def location_count(self) -> int:
+        return len(self._locations)
+
+    @property
+    def last_update(self) -> Optional[datetime]:
+        with self._lock:
+            return self._last_update
+
+    def get_predictions(self, force_refresh: bool = False) -> Tuple[List[Dict[str, float]], Optional[datetime]]:
+        if force_refresh or self._needs_refresh():
+            self.update_predictions()
+        with self._lock:
+            predictions = [dict(item) for item in self._predictions]
+            last_update = self._last_update
+        return predictions, last_update
+
+    def update_predictions(self) -> List[Dict[str, float]]:
+        model_source = self._model if self._model is not None else self._model_path
+        predictions: List[Dict[str, float]] = []
+        timestamp = datetime.now(timezone.utc)
+        month_value = timestamp.month
+
+        for city, (lat, lon) in self._locations.items():
+            solar_data = self._fetch_solar_data(lat, lon)
+            predicted_power = self._predict_power(model_source, city, month_value, solar_data)
+            record = {
+                "city": city,
+                "latitude": lat,
+                "longitude": lon,
+                "predicted_power": round(predicted_power, 2),
+                "temperature": float(solar_data["temp_air"]),
+                "wind_speed": float(solar_data["wind_speed"]),
+                "clouds": float(solar_data.get("clouds", 0.0)),
+                "humidity": float(solar_data.get("humidity", 0.0)),
+                "weather_description": solar_data.get("weather_description", "Clear sky"),
+                "poa_direct": float(solar_data["poa_direct"]),
+                "poa_sky_diffuse": float(solar_data["poa_sky_diffuse"]),
+                "poa_ground_diffuse": float(solar_data.get("poa_ground_diffuse", 0.0)),
+                "solar_elevation": float(solar_data["solar_elevation"]),
+            }
+            predictions.append(record)
+
+        with self._lock:
+            self._predictions = predictions
+            self._last_update = timestamp
+        return predictions
+
+    def _needs_refresh(self) -> bool:
+        with self._lock:
+            if not self._predictions or self._last_update is None:
+                return True
+            age = (datetime.now(timezone.utc) - self._last_update).total_seconds()
+        return age >= self._update_interval
+
+    @staticmethod
+    def _fetch_solar_data(lat: float, lon: float) -> Dict[str, float]:
+        try:
+            return get_solar_data_from_open_meteo(lat, lon)
+        except Exception:
+            return get_fallback_solar_data(lat, lon)
+
+    def _predict_power(
+        self,
+        model_source: Optional[object],
+        city: str,
+        month_value: int,
+        solar_data: Dict[str, float],
+    ) -> float:
+        if model_source is None:
+            return 0.0
+
+        try:
+            raw_prediction = prid(
+                model_source,
+                city,
+                month_value,
+                solar_data["poa_direct"],
+                solar_data["poa_sky_diffuse"],
+                solar_data["solar_elevation"],
+                solar_data["wind_speed"],
+                solar_data["temp_air"],
+            )
+        except ValueError:
+            raw_prediction = prid(
+                model_source,
+                "Afzalpur",
+                month_value,
+                solar_data["poa_direct"],
+                solar_data["poa_sky_diffuse"],
+                solar_data["solar_elevation"],
+                solar_data["wind_speed"],
+                solar_data["temp_air"],
+            )
+        except Exception:
+            return 0.0
+
+        array_prediction = np.atleast_1d(raw_prediction).astype(float)
+        array_prediction[array_prediction < 0] = 0.0
+        return float(array_prediction[0]) if array_prediction.size else 0.0
+
+
+__all__ = ["HotspotService", "KARNATAKA_LOCATIONS"]

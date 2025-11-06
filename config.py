@@ -37,3 +37,4 @@ class Config:
     
     # Application settings
     HISTORY_LIMIT = 10  # Number of predictions to show in history
+    HOTSPOT_REFRESH_SECONDS = int(os.getenv('HOTSPOT_REFRESH_SECONDS', '3600'))
