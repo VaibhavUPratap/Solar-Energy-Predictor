@@ -88,7 +88,7 @@ async function makePrediction(city) {
         if (data.success) {
             console.log('✓ Prediction successful:', data);
             displayResults(data);
-            updateMap(data.prediction.latitude, data.prediction.longitude, data.prediction.city);
+            updateMap(data);
         } else {
             throw new Error('Invalid response from server');
         }
@@ -112,43 +112,78 @@ function displayResults(data) {
     const resultsSection = document.getElementById('resultsSection');
     
     // Update result values
-    document.getElementById('predictedPower').textContent = `${data.prediction.predicted_power} W`;
-    document.getElementById('temperature').textContent = `${data.weather.temperature.toFixed(1)}°C`;
-    document.getElementById('windSpeed').textContent = `${data.weather.wind_speed.toFixed(1)} m/s`;
-    document.getElementById('clouds').textContent = `${data.weather.clouds}%`;
+    document.getElementById('predictedPower').textContent = formatMetric(data.prediction.predicted_power, { decimals: 0, suffix: ' W' });
+    document.getElementById('temperature').textContent = formatMetric(data.weather.temperature, { decimals: 1, suffix: '°C' });
+    document.getElementById('windSpeed').textContent = formatMetric(data.weather.wind_speed, { decimals: 1, suffix: ' m/s' });
+    document.getElementById('clouds').textContent = formatMetric(data.weather.clouds, { decimals: 0, suffix: '%' });
     
     // Update location info
     document.getElementById('locationName').textContent = 
         `${data.prediction.city}, ${data.prediction.country}`;
+    const description = (data.weather && typeof data.weather.description === 'string') ? data.weather.description.trim() : '';
     document.getElementById('weatherDescription').textContent = 
-        `${capitalizeFirstLetter(data.weather.description)}`;
+        description ? capitalizeFirstLetter(description) : 'No weather summary available.';
     
     // Update solar parameters
-    document.getElementById('poaDirect').textContent = data.solar_parameters.poa_direct;
-    document.getElementById('poaSky').textContent = data.solar_parameters.poa_sky_diffuse;
-    document.getElementById('poaGround').textContent = data.solar_parameters.poa_ground_diffuse;
-    document.getElementById('solarElevation').textContent = data.solar_parameters.solar_elevation;
+    document.getElementById('poaDirect').textContent = formatMetric(data.solar_parameters.poa_direct, { decimals: 0, suffix: ' W/m²' });
+    document.getElementById('poaSky').textContent = formatMetric(data.solar_parameters.poa_sky_diffuse, { decimals: 0, suffix: ' W/m²' });
+    document.getElementById('poaGround').textContent = formatMetric(data.solar_parameters.poa_ground_diffuse, { decimals: 0, suffix: ' W/m²' });
+    document.getElementById('solarElevation').textContent = formatMetric(data.solar_parameters.solar_elevation, { decimals: 1, suffix: '°' });
     
     // Show results with animation
     resultsSection.classList.remove('hidden');
+    resultsSection.classList.remove('animate-fadeIn');
+    void resultsSection.offsetWidth;
     resultsSection.classList.add('animate-fadeIn');
 }
 
 /**
  * Update map with location marker
- * @param {number} lat - Latitude
- * @param {number} lon - Longitude
- * @param {string} city - City name
+ * @param {Object} dataset - Prediction dataset including prediction and weather
  */
-function updateMap(lat, lon, city) {
+function updateMap(dataset) {
+    if (!dataset || !dataset.prediction) {
+        return;
+    }
+
+    const prediction = dataset.prediction;
+    const weather = dataset.weather || {};
+    const lat = Number(prediction.latitude);
+    const lon = Number(prediction.longitude);
+    const city = prediction.city || 'Selected location';
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return;
+    }
+
     // Remove existing marker if any
     if (marker) {
         map.removeLayer(marker);
     }
 
-    // Add new marker
-    marker = L.marker([lat, lon]).addTo(map);
-    marker.bindPopup(`<b>${city}</b><br>Solar prediction location`).openPopup();
+    const predictedPowerRaw = Number(prediction.predicted_power);
+    const predictedPower = Number.isFinite(predictedPowerRaw) ? predictedPowerRaw : 0;
+    const powerTier = getPowerTier(predictedPower);
+    const fillColor = getMarkerColor(powerTier);
+    const radius = Math.max(10, Math.min(24, predictedPower / 40));
+
+    marker = L.circleMarker([lat, lon], {
+        radius,
+        fillColor,
+        color: '#f8fafc',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.85
+    }).addTo(map);
+
+    marker.bindPopup(`
+        <div style="text-align:center;">
+            <h3 style="margin-bottom:0.35rem;">${city}</h3>
+            <p style="font-weight:600; margin-bottom:0.35rem;">${formatMetric(predictedPower, { decimals: 0, suffix: ' W', round: true })}</p>
+            <p style="margin:0;">${formatMetric(weather.temperature, { decimals: 1, suffix: '°C' })} · ${formatMetric(weather.wind_speed, { decimals: 1, suffix: ' m/s' })}</p>
+            <p style="margin:0.2rem 0 0;">${formatMetric(weather.clouds, { decimals: 0, suffix: '% clouds' })}</p>
+        </div>
+    `).openPopup();
 
     // Center map on location with zoom
     map.setView([lat, lon], 10);
@@ -180,6 +215,45 @@ function capitalizeFirstLetter(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+/**
+ * Format numeric metrics with sensible defaults.
+ */
+function formatMetric(value, { decimals = 0, suffix = '', round } = {}) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+        return suffix ? `-- ${suffix.trim()}` : '--';
+    }
+
+    const shouldRound = round !== undefined ? round : decimals === 0;
+    const factor = Math.pow(10, decimals);
+    const adjusted = shouldRound
+        ? Math.round(numeric * factor) / factor
+        : numeric;
+
+    const formatted = decimals === 0
+        ? adjusted.toLocaleString()
+        : adjusted.toFixed(decimals);
+
+    return `${formatted}${suffix}`;
+}
+
+function getPowerTier(power) {
+    if (power >= 500) return 'high';
+    if (power >= 300) return 'medium';
+    return 'low';
+}
+
+function getMarkerColor(tier) {
+    switch (tier) {
+        case 'high':
+            return '#22d3ee';
+        case 'medium':
+            return '#a855f7';
+        default:
+            return '#f97316';
+    }
+}
+
 // Add fade-in animation CSS dynamically
 const style = document.createElement('style');
 style.textContent = `
@@ -192,6 +266,10 @@ style.textContent = `
             opacity: 1;
             transform: translateY(0);
         }
+    }
+
+    .animate-fadeIn {
+        animation: fadeIn 0.5s ease-in-out;
     }
 `;
 document.head.appendChild(style);

@@ -3,204 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solar Energy Predictor - AI-Powered Solar Forecasting</title>
-    
-    <!-- Tailwind CSS -->
+    <title>Solar Energy Predictor · Aurora Dashboard</title>
+
+    <!-- Tailwind CSS for utility helpers used across the app -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    colors: {
-                        primary: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            200: '#bae6fd',
-                            300: '#7dd3fc',
-                            400: '#38bdf8',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            700: '#0369a1',
-                            800: '#075985',
-                            900: '#0c4a6e',
-                        },
-                        accent: {
-                            50: '#faf5ff',
-                            100: '#f3e8ff',
-                            200: '#e9d5ff',
-                            300: '#d8b4fe',
-                            400: '#c084fc',
-                            500: '#a855f7',
-                            600: '#9333ea',
-                            700: '#7c3aed',
-                            800: '#6b21a8',
-                            900: '#581c87',
-                        },
-                        neon: {
-                            50: '#f0fdfa',
-                            100: '#ccfbf1',
-                            200: '#99f6e4',
-                            300: '#5eead4',
-                            400: '#2dd4bf',
-                            500: '#14b8a6',
-                            600: '#0d9488',
-                            700: '#0f766e',
-                            800: '#115e59',
-                            900: '#134e4a',
-                        }
-                    },
                     animation: {
-                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                        'bounce-slow': 'bounce 2s infinite',
-                        'spin-slow': 'spin 3s linear infinite',
-                        'fadeIn': 'fadeIn 0.5s ease-in-out',
-                    },
-                    keyframes: {
-                        fadeIn: {
-                            '0%': { opacity: '0', transform: 'translateY(10px)' },
-                            '100%': { opacity: '1', transform: 'translateY(0)' }
-                        }
+                        'float-slow': 'floaty 6s ease-in-out infinite'
                     }
                 }
             }
-        }
+        };
     </script>
-    
-    <!-- Leaflet CSS for map -->
+
+    <!-- Leaflet CSS for the interactive map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <!-- Custom CSS -->
+
+    <!-- Custom Aurora theme styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen text-white">
-    <div class="container mx-auto px-4 py-8 max-w-7xl">
-        <!-- Header Section -->
-        <header class="text-center mb-12">
-            <div class="flex items-center justify-center gap-4 mb-4 flex-wrap">
-                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Solar Logo" class="w-16 h-16 rounded-full shadow-lg shadow-primary-500/30" onerror="this.style.display='none'">
-                <h1 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-500 bg-clip-text text-transparent animate-pulse-slow">
-                    🌞 Solar Energy Predictor
-                </h1>
+<body>
+    <main class="container">
+        <!-- Hero / intro -->
+        <header class="hero">
+            <div class="hero-content">
+                <span class="brand-badge">
+                    <span>&#9889;</span>
+                    AI-Assisted Solar Intelligence
+                </span>
+                <h1 class="hero-title">Solar Energy Predictor</h1>
+                <p class="hero-subtitle">
+                    Plan installations, optimise grid usage, and understand output potential with our blended weather&nbsp;+&nbsp;irradiance model.
+                </p>
+                <div class="hero-actions">
+                    <a href="#predictionForm" class="button-primary">Start a Prediction</a>
+                    <a href="/api/history-page" class="button-outline">View Energy History</a>
+                </div>
+                <div class="hero-stats">
+                    <div class="hero-pill"><span class="emoji">&#9728;&#65039;</span>Real-time irradiance synthesis</div>
+                    <div class="hero-pill"><span class="emoji">&#127757;</span>Global city coverage</div>
+                    <div class="hero-pill"><span class="emoji">&#128752;</span>Weather-backed AI forecasts</div>
+                </div>
             </div>
-            <p class="text-xl text-slate-300 font-medium">AI-Powered Real-Time Solar Power Forecasting</p>
         </header>
 
-        <!-- Main Content Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
-            <!-- Input Section -->
-            <section class="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-cyan-500/20 hover:border-cyan-400/50 transition-all duration-300 hover:shadow-cyan-500/20 hover:shadow-2xl">
-                <h2 class="text-2xl font-bold text-cyan-400 mb-6 flex items-center gap-2">
-                    🌍 Enter Location
-                </h2>
-                <form id="predictionForm" class="space-y-6">
-                    <div class="space-y-2">
-                        <label for="cityInput" class="block text-sm font-medium text-slate-300">City Name</label>
-                        <input 
-                            type="text" 
-                            id="cityInput" 
-                            placeholder="e.g., London, Tokyo, New York" 
-                            required 
+        <!-- Main interactive surface -->
+        <section class="layout-grid">
+            <!-- Prediction form -->
+            <article class="glass-card input-card">
+                <div class="card-header">
+                    <h2><span class="emoji">&#129518;</span>Prediction Console</h2>
+                </div>
+                <p class="card-subtitle">
+                    Choose any city worldwide to synthesise live meteorological readings and predict expected solar power output for a standard panel.
+                </p>
+                <form id="predictionForm" class="form-grid mt-6">
+                    <div class="input-group">
+                        <label for="cityInput">City or region</label>
+                        <input
+                            type="text"
+                            id="cityInput"
+                            class="input-field"
+                            placeholder="e.g. Bengaluru, Nairobi, São Paulo"
+                            required
                             autocomplete="off"
-                            class="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-300"
                         >
                     </div>
-                    <button type="submit" id="predictBtn" class="w-full bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
-                        <span id="btnText">🔮 Predict Solar Output</span>
-                        <span id="btnLoader" class="hidden w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    <button type="submit" id="predictBtn" class="button-primary">
+                        <span id="btnText">Predict Solar Output</span>
+                        <span id="btnLoader" class="loader hidden" aria-hidden="true"></span>
                     </button>
                 </form>
-                
-                <div class="flex gap-4 mt-6">
-                    <a href="/api/history-page" class="flex-1 bg-slate-700/50 hover:bg-purple-600/20 border border-purple-500 text-purple-400 hover:text-purple-300 text-center py-3 px-4 rounded-xl transition-all duration-300 font-medium hover:scale-105">
-                        📊 View History
-                    </a>
-                    <a href="/api/karnataka-hotspots" class="flex-1 bg-slate-700/50 hover:bg-cyan-600/20 border border-cyan-500 text-cyan-400 hover:text-cyan-300 text-center py-3 px-4 rounded-xl transition-all duration-300 font-medium hover:scale-105">
-                        🗺️ Karnataka Hotspots
-                    </a>
+                <div class="links-row">
+                    <a href="/api/history-page" class="button-outline">&#128202; Forecast Archive</a>
+                    <a href="/api/karnataka-hotspots" class="button-outline">&#128506;&#65039; Karnataka Hotspots</a>
                 </div>
-            </section>
+            </article>
 
-            <!-- Results Section -->
-            <section class="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-cyan-500/20 hover:border-cyan-400/50 transition-all duration-300 hover:shadow-cyan-500/20 hover:shadow-2xl hidden" id="resultsSection">
-                <h2 class="text-2xl font-bold text-cyan-400 mb-6 flex items-center gap-2">
-                    ⚡ Prediction Results
-                </h2>
-                
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-gradient-to-br from-cyan-500/20 to-purple-600/20 border border-cyan-500/30 rounded-xl p-4 text-center">
-                        <div class="text-sm text-cyan-300 mb-2">Predicted Solar Power</div>
-                        <div class="text-3xl font-bold text-cyan-400" id="predictedPower">-- W</div>
+            <!-- Dynamic results -->
+            <article class="glass-card results-card hidden" id="resultsSection">
+                <div class="card-header">
+                    <h2><span class="emoji">&#9889;</span>Forecast Insight</h2>
+                </div>
+                <div class="location-chip">
+                    <h3 id="locationName">--</h3>
+                    <p id="weatherDescription">Awaiting fresh prediction...</p>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-card primary">
+                        <span class="stat-title">Predicted Output</span>
+                        <span class="stat-value" id="predictedPower">-- W</span>
+                        <span class="stat-icon">&#128267;</span>
                     </div>
-                    
-                    <div class="bg-slate-700/50 border border-slate-600 rounded-xl p-4 text-center">
-                        <div class="text-sm text-slate-400 mb-2">🌡️ Temperature</div>
-                        <div class="text-xl font-bold text-slate-200" id="temperature">--°C</div>
+                    <div class="stat-card">
+                        <span class="stat-title">Temperature</span>
+                        <span class="stat-value" id="temperature">--°C</span>
+                        <span class="stat-icon">&#127777;&#65039;</span>
                     </div>
-                    
-                    <div class="bg-slate-700/50 border border-slate-600 rounded-xl p-4 text-center">
-                        <div class="text-sm text-slate-400 mb-2">💨 Wind Speed</div>
-                        <div class="text-xl font-bold text-slate-200" id="windSpeed">-- m/s</div>
+                    <div class="stat-card">
+                        <span class="stat-title">Wind Speed</span>
+                        <span class="stat-value" id="windSpeed">-- m/s</span>
+                        <span class="stat-icon">&#128168;</span>
                     </div>
-                    
-                    <div class="bg-slate-700/50 border border-slate-600 rounded-xl p-4 text-center">
-                        <div class="text-sm text-slate-400 mb-2">☁️ Cloud Coverage</div>
-                        <div class="text-xl font-bold text-slate-200" id="clouds">--%</div>
+                    <div class="stat-card">
+                        <span class="stat-title">Cloud Coverage</span>
+                        <span class="stat-value" id="clouds">--%</span>
+                        <span class="stat-icon">☁️</span>
                     </div>
                 </div>
-
-                <div class="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4 mb-6 text-center">
-                    <h3 class="text-xl font-bold text-cyan-400 mb-2" id="locationName">--</h3>
-                    <p class="text-slate-300" id="weatherDescription">--</p>
-                </div>
-
-                <!-- Solar Parameters -->
-                <div class="bg-slate-700/30 rounded-xl p-6 border border-slate-600/50">
-                    <h3 class="text-lg font-bold text-cyan-400 mb-4 flex items-center gap-2">☀️ Solar Irradiance Parameters</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="flex justify-between items-center py-2 px-3 bg-slate-800/50 rounded-lg">
-                            <span class="text-slate-400">Direct POA:</span>
-                            <strong class="text-white" id="poaDirect">--</strong> <span class="text-slate-400">W/m²</span>
+                <div>
+                    <h3 class="card-subtitle mb-3">Irradiance breakdown</h3>
+                    <div class="param-grid">
+                        <div class="param-item">
+                            <span>Direct POA</span>
+                            <span class="param-value" id="poaDirect">-- W/m²</span>
                         </div>
-                        <div class="flex justify-between items-center py-2 px-3 bg-slate-800/50 rounded-lg">
-                            <span class="text-slate-400">Sky Diffuse:</span>
-                            <strong class="text-white" id="poaSky">--</strong> <span class="text-slate-400">W/m²</span>
+                        <div class="param-item">
+                            <span>Sky Diffuse</span>
+                            <span class="param-value" id="poaSky">-- W/m²</span>
                         </div>
-                        <div class="flex justify-between items-center py-2 px-3 bg-slate-800/50 rounded-lg">
-                            <span class="text-slate-400">Ground Diffuse:</span>
-                            <strong class="text-white" id="poaGround">--</strong> <span class="text-slate-400">W/m²</span>
+                        <div class="param-item">
+                            <span>Ground Diffuse</span>
+                            <span class="param-value" id="poaGround">-- W/m²</span>
                         </div>
-                        <div class="flex justify-between items-center py-2 px-3 bg-slate-800/50 rounded-lg">
-                            <span class="text-slate-400">Solar Elevation:</span>
-                            <strong class="text-white" id="solarElevation">--</strong> <span class="text-slate-400">°</span>
+                        <div class="param-item">
+                            <span>Solar Elevation</span>
+                            <span class="param-value" id="solarElevation">--°</span>
                         </div>
                     </div>
                 </div>
-            </section>
+            </article>
 
-            <!-- Map Section -->
-            <section class="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-cyan-500/20 hover:border-cyan-400/50 transition-all duration-300 hover:shadow-cyan-500/20 hover:shadow-2xl">
-                <h2 class="text-2xl font-bold text-cyan-400 mb-6 flex items-center gap-2">
-                    🗺️ Location Map
-                </h2>
-                <div id="map" class="rounded-xl border-2 border-slate-600 h-96"></div>
-            </section>
-        </div>
+            <!-- Map visual -->
+            <article class="glass-card map-card">
+                <div class="card-header">
+                    <h2><span class="emoji">&#128506;&#65039;</span>Geo Visual</h2>
+                </div>
+                <p class="card-subtitle">
+                    Pinpoints the selected location and scales marker intensity with predicted output to provide instant spatial context.
+                </p>
+                <div id="map"></div>
+                <div class="map-legend">
+                    <span><span class="legend-dot" style="background: #22d3ee;"></span> Higher output</span>
+                    <span><span class="legend-dot" style="background: #a855f7;"></span> Moderate output</span>
+                    <span><span class="legend-dot" style="background: #f97316;"></span> Lower output</span>
+                </div>
+            </article>
+        </section>
 
-        <!-- Error Message -->
-        <div id="errorMessage" class="hidden bg-red-500/20 border border-red-500 text-red-400 p-4 rounded-xl text-center animate-pulse mb-8"></div>
+        <div id="errorMessage" class="error-banner hidden"></div>
 
-        <!-- Footer -->
-        <footer class="text-center py-8 text-slate-400 border-t border-slate-700/50 mt-12">
-            <p class="mb-2">Built with Flask, Machine Learning & OpenWeatherMap API</p>
-            <p>© 2025 Solar Energy Predictor | <a href="https://github.com" target="_blank" class="text-cyan-400 hover:text-cyan-300 transition-colors duration-300">GitHub</a></p>
+        <footer class="footer">
+            <p>Crafted with Flask, Leaflet, and pvlib for intelligent energy planning.</p>
+            <p>© 2025 Solar Energy Predictor · <a href="https://github.com" target="_blank" rel="noopener">Explore on GitHub</a></p>
         </footer>
-    </div>
-    
+    </main>
+
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- Custom JS -->
+
+    <!-- Custom logic -->
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>

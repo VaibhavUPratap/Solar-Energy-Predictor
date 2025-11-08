@@ -1,211 +1,319 @@
 /**
- * Karnataka Hotspots - Frontend JavaScript
- * Handles map rendering, data fetching, and hourly updates
+ * Karnataka Hotspots - Aurora UI edition
+ * Manages map rendering, API polling, and interactive city cards.
  */
 
 let karnatakaMap;
 let cityMarkers = [];
 let updateInterval;
 
-document.addEventListener('DOMContentLoaded', function() {
+const REFRESH_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+
+document.addEventListener('DOMContentLoaded', () => {
     initializeKarnatakaMap();
     setupRefreshHandler();
-    loadKarnatakaData();
-    
-    // Set up hourly updates
-    updateInterval = setInterval(loadKarnatakaData, 3600000); // 1 hour
+    loadKarnatakaData({ initial: true });
+
+    updateInterval = setInterval(() => loadKarnatakaData({ silent: true }), REFRESH_INTERVAL_MS);
 });
 
 /**
- * Initialize Karnataka-focused map
+ * Initialise the Leaflet map centered on Karnataka.
  */
 function initializeKarnatakaMap() {
-    // Center on Karnataka
     karnatakaMap = L.map('karnatakaMap').setView([15.3173, 75.7139], 7);
 
-    // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 18
     }).addTo(karnatakaMap);
 
-    console.log('✓ Karnataka map initialized');
+    console.log('✓ Karnataka map initialised');
 }
 
 /**
- * Setup refresh button handler
+ * Attach behaviour to the manual refresh button.
  */
 function setupRefreshHandler() {
     const refreshBtn = document.getElementById('refreshBtn');
-    refreshBtn.addEventListener('click', function() {
-        loadKarnatakaData();
+    refreshBtn.addEventListener('click', () => {
+        loadKarnatakaData({ manual: true });
     });
 }
 
 /**
- * Load Karnataka cities data
+ * Fetch Karnataka predictions from the backend.
+ * @param {Object} options - Flags controlling UI behaviour.
  */
-async function loadKarnatakaData() {
+async function loadKarnatakaData(options = {}) {
+    const { initial = false, manual = false, silent = false } = options;
     const loadingOverlay = document.getElementById('loadingOverlay');
-    const lastUpdated = document.getElementById('lastUpdated');
-    
-    try {
-        // Show loading
+
+    if (initial) {
         loadingOverlay.classList.remove('hidden');
-        
-        console.log('🔍 Loading Karnataka predictions...');
-        
+    }
+
+    if (manual) {
+        setRefreshingState(true);
+    }
+
+    try {
+    clearHotspotError();
+    console.log('[refresh] Fetching Karnataka predictions...');
+
         const response = await fetch('/api/karnataka-predictions');
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.message || 'Failed to load predictions');
+        const payload = await response.json();
+
+        if (!response.ok || !payload.success) {
+            throw new Error(payload.message || 'Failed to load predictions');
         }
-        
-        if (data.success) {
-            console.log('✓ Karnataka predictions loaded:', data);
-            displayKarnatakaData(data.predictions);
-            updateMap(data.predictions);
-            updateStatistics(data.predictions);
-            
-            // Update timestamp
-            const now = new Date();
-            lastUpdated.textContent = now.toLocaleString();
-        }
-        
+
+        const predictions = Array.isArray(payload.predictions) ? payload.predictions : [];
+        console.log(`✓ Received ${predictions.length} Karnataka predictions`);
+
+        displayKarnatakaData(predictions);
+        updateMap(predictions);
+        updateStatistics(predictions);
+        stampLastUpdated();
     } catch (error) {
-        console.error('✗ Error loading Karnataka data:', error);
-        showError('Failed to load Karnataka predictions. Please try again.');
+        console.error('✗ Karnataka predictions error:', error);
+        showHotspotError(error.message || 'Unable to load Karnataka predictions. Please try again.');
     } finally {
-        loadingOverlay.classList.add('hidden');
+        if (initial) {
+            loadingOverlay.classList.add('hidden');
+        }
+        if (manual) {
+            setRefreshingState(false);
+        }
+        if (!initial && !manual && !silent) {
+            loadingOverlay.classList.add('hidden');
+        }
     }
 }
 
 /**
- * Display cities data in grid
+ * Populate the city list panel.
+ * @param {Array<Object>} predictions - City-level prediction data.
  */
 function displayKarnatakaData(predictions) {
     const citiesGrid = document.getElementById('citiesGrid');
-    
-    // Sort by predicted power (highest first)
-    const sortedPredictions = predictions.sort((a, b) => b.predicted_power - a.predicted_power);
-    
-    citiesGrid.innerHTML = sortedPredictions.map(prediction => {
-        const powerClass = getPowerClass(prediction.predicted_power);
-    const bgColor = powerClass === 'high-power' ? 'bg-cyan-500/10 border-cyan-500/30' : 
-               powerClass === 'medium-power' ? 'bg-purple-500/10 border-purple-500/30' : 
-               'bg-amber-500/10 border-amber-500/30';
-        
+
+    if (!predictions.length) {
+        citiesGrid.innerHTML = '<p class="card-subtitle">No hotspot data available. Try refreshing in a moment.</p>';
+        return;
+    }
+
+    const sorted = [...predictions].sort((a, b) => Number(b.predicted_power) - Number(a.predicted_power));
+
+    citiesGrid.innerHTML = sorted.map(prediction => {
+        const tier = getPowerTier(Number(prediction.predicted_power));
+        const powerDisplay = formatPower(prediction.predicted_power);
+        const temperature = safeNumeric(prediction.temperature).toFixed(1);
+        const windSpeed = safeNumeric(prediction.wind_speed).toFixed(1);
+        const clouds = safeNumeric(prediction.clouds).toFixed(0);
+        const humidity = safeNumeric(prediction.humidity).toFixed(0);
+
         return `
-            <div class="bg-slate-700/50 ${bgColor} border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg" onclick="focusOnCity(${prediction.latitude}, ${prediction.longitude})">
-                <div class="font-bold text-white mb-2">${prediction.city}</div>
-                <div class="text-2xl font-bold text-cyan-400 mb-3">${prediction.predicted_power} W</div>
-                <div class="space-y-1 text-sm text-slate-400">
-                    <div>🌡️ ${prediction.temperature.toFixed(1)}°C</div>
-                    <div>💨 ${prediction.wind_speed.toFixed(1)} m/s</div>
-                    <div>☁️ ${prediction.clouds}%</div>
-                    <div>💧 ${prediction.humidity}%</div>
+            <div class="hotspot-card hotspot-card--${tier}" data-lat="${prediction.latitude}" data-lon="${prediction.longitude}">
+                <div class="hotspot-card__header">
+                    <span class="hotspot-city">${prediction.city}</span>
+                    <span class="hotspot-power">${powerDisplay}</span>
+                </div>
+                <div class="hotspot-meta">
+                    <span>&#127777;&#65039; ${temperature}°C</span>
+                    <span>&#128246; ${humidity}%</span>
+                </div>
+                <div class="hotspot-meta">
+                    <span>&#128168; ${windSpeed} m/s</span>
+                    <span>&#9729;&#65039; ${clouds}%</span>
                 </div>
             </div>
         `;
     }).join('');
+
+    bindCityCardHandlers();
 }
 
 /**
- * Update map with city markers
+ * Attach click handlers to each city card.
  */
-function updateMap(predictions) {
-    // Clear existing markers
-    cityMarkers.forEach(marker => karnatakaMap.removeLayer(marker));
-    cityMarkers = [];
-    
-    // Add new markers
-    predictions.forEach(prediction => {
-        const powerClass = getPowerClass(prediction.predicted_power);
-        const markerColor = getMarkerColor(powerClass);
-        
-        const marker = L.circleMarker([prediction.latitude, prediction.longitude], {
-            radius: Math.max(8, Math.min(20, prediction.predicted_power / 50)),
-            fillColor: markerColor,
-            color: 'white',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8
-        }).addTo(karnatakaMap);
-        
-        marker.bindPopup(`
-            <div style="text-align: center;">
-                <h3>${prediction.city}</h3>
-                <p><strong>${prediction.predicted_power} W</strong></p>
-                <p>🌡️ ${prediction.temperature.toFixed(1)}°C</p>
-                <p>💨 ${prediction.wind_speed.toFixed(1)} m/s</p>
-                <p>☁️ ${prediction.clouds}%</p>
-                <p>${prediction.weather_description}</p>
-            </div>
-        `);
-        
-        cityMarkers.push(marker);
+function bindCityCardHandlers() {
+    document.querySelectorAll('.hotspot-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const lat = parseFloat(card.dataset.lat);
+            const lon = parseFloat(card.dataset.lon);
+            focusOnCity(lat, lon);
+        });
     });
 }
 
 /**
- * Update statistics
+ * Push markers to the map for each city.
+ */
+function updateMap(predictions) {
+    cityMarkers.forEach(entry => karnatakaMap.removeLayer(entry.marker));
+    cityMarkers = [];
+
+    predictions.forEach(prediction => {
+        const tier = getPowerTier(Number(prediction.predicted_power));
+        const markerColor = getMarkerColor(tier);
+        const magnitude = Math.max(10, Math.min(26, Number(prediction.predicted_power) / 35));
+
+        const marker = L.circleMarker([prediction.latitude, prediction.longitude], {
+            radius: magnitude,
+            fillColor: markerColor,
+            color: '#f8fafc',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.85
+        }).addTo(karnatakaMap);
+
+        marker.bindPopup(`
+            <div style="text-align:center;">
+                <h3 style="margin-bottom:0.35rem;">${prediction.city}</h3>
+                <p style="font-weight:600; margin-bottom:0.35rem;">${formatPower(prediction.predicted_power)}</p>
+                <p style="margin:0;">&#127777;&#65039; ${safeNumeric(prediction.temperature).toFixed(1)}°C · &#128168; ${safeNumeric(prediction.wind_speed).toFixed(1)} m/s</p>
+                <p style="margin:0.2rem 0 0;">&#9729;&#65039; ${safeNumeric(prediction.clouds).toFixed(0)}% · ${prediction.weather_description || ''}</p>
+            </div>
+        `);
+
+        cityMarkers.push({ marker, lat: prediction.latitude, lon: prediction.longitude });
+    });
+}
+
+/**
+ * Update stats summary cards.
  */
 function updateStatistics(predictions) {
-    const totalCities = document.getElementById('totalCities');
-    const avgPower = document.getElementById('avgPower');
-    const maxPower = document.getElementById('maxPower');
-    const bestCity = document.getElementById('bestCity');
-    
+    const totalCitiesEl = document.getElementById('totalCities');
+    const avgPowerEl = document.getElementById('avgPower');
+    const maxPowerEl = document.getElementById('maxPower');
+    const bestCityEl = document.getElementById('bestCity');
+
+    if (!predictions.length) {
+        totalCitiesEl.textContent = '--';
+        avgPowerEl.textContent = '--';
+        maxPowerEl.textContent = '--';
+        bestCityEl.textContent = '--';
+        return;
+    }
+
     const total = predictions.length;
-    const avg = predictions.reduce((sum, p) => sum + p.predicted_power, 0) / total;
-    const max = Math.max(...predictions.map(p => p.predicted_power));
-    const best = predictions.find(p => p.predicted_power === max);
-    
-    totalCities.textContent = total;
-    avgPower.textContent = `${avg.toFixed(0)} W`;
-    maxPower.textContent = `${max} W`;
-    bestCity.textContent = best ? best.city : '--';
+    const powers = predictions.map(p => Number(p.predicted_power) || 0);
+    const average = powers.reduce((sum, value) => sum + value, 0) / total;
+    const max = Math.max(...powers);
+    const best = predictions.find(p => Number(p.predicted_power) === max);
+
+    totalCitiesEl.textContent = String(total);
+    avgPowerEl.textContent = `${Math.round(average)} W`;
+    maxPowerEl.textContent = `${Math.round(max)} W`;
+    bestCityEl.textContent = best ? best.city : '--';
 }
 
 /**
- * Get power classification
+ * Focus the map on a specific city marker.
  */
-function getPowerClass(power) {
-    if (power >= 500) return 'high-power';
-    if (power >= 300) return 'medium-power';
-    return 'low-power';
-}
-
-/**
- * Get marker color based on power class
- */
-function getMarkerColor(powerClass) {
-    switch (powerClass) {
-        case 'high-power': return '#10b981';
-        case 'medium-power': return '#f59e0b';
-        case 'low-power': return '#ef4444';
-        default: return '#6b7280';
+function focusOnCity(lat, lon) {
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+        karnatakaMap.setView([lat, lon], 10);
+        const entry = cityMarkers.find(item => Math.abs(item.lat - lat) < 1e-6 && Math.abs(item.lon - lon) < 1e-6);
+        if (entry) {
+            entry.marker.openPopup();
+        }
     }
 }
 
 /**
- * Focus map on specific city
+ * Display an error banner specific to the hotspots page.
  */
-function focusOnCity(lat, lon) {
-    karnatakaMap.setView([lat, lon], 10);
+function showHotspotError(message) {
+    const banner = document.getElementById('hotspotError');
+    banner.textContent = `⚠️ ${message}`;
+    banner.classList.remove('hidden');
 }
 
 /**
- * Show error message
+ * Clear any displayed error banner.
  */
-function showError(message) {
-    // You can implement a toast notification or alert here
-    alert(`⚠️ ${message}`);
+function clearHotspotError() {
+    const banner = document.getElementById('hotspotError');
+    banner.classList.add('hidden');
+    banner.textContent = '';
 }
 
-// Clean up interval when page unloads
-window.addEventListener('beforeunload', function() {
+/**
+ * Toggle manual refresh button state.
+ */
+function setRefreshingState(isRefreshing) {
+    const refreshBtn = document.getElementById('refreshBtn');
+    const refreshLoader = document.getElementById('refreshLoader');
+    const refreshLabel = refreshBtn.querySelector('.refresh-label');
+
+    refreshBtn.disabled = isRefreshing;
+    if (isRefreshing) {
+        refreshLabel.textContent = 'Refreshing...';
+        refreshLoader.classList.remove('hidden');
+    } else {
+        refreshLabel.textContent = 'Refresh Predictions';
+        refreshLoader.classList.add('hidden');
+    }
+}
+
+/**
+ * Update the "last updated" timestamp chip.
+ */
+function stampLastUpdated() {
+    const lastUpdated = document.getElementById('lastUpdated');
+    const now = new Date();
+    lastUpdated.textContent = now.toLocaleString();
+}
+
+/**
+ * Return power tier string for styling hooks.
+ */
+function getPowerTier(power) {
+    if (power >= 500) return 'high';
+    if (power >= 300) return 'medium';
+    return 'low';
+}
+
+/**
+ * Map tier to marker colour.
+ */
+function getMarkerColor(tier) {
+    switch (tier) {
+        case 'high':
+            return '#22d3ee';
+        case 'medium':
+            return '#a855f7';
+        case 'low':
+        default:
+            return '#f97316';
+    }
+}
+
+/**
+ * Format wattage values for display.
+ */
+function formatPower(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+        return '--';
+    }
+    const rounded = Math.round(numeric);
+    return `${rounded.toLocaleString()} W`;
+}
+
+/**
+ * Coerce API values to numbers with graceful fallback.
+ */
+function safeNumeric(value) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+}
+
+// Cleanup interval on navigation away
+window.addEventListener('beforeunload', () => {
     if (updateInterval) {
         clearInterval(updateInterval);
     }
