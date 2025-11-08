@@ -8,3 +8,4 @@ pandas
 joblib
 Werkzeug
 pvlib
+gunicorn
