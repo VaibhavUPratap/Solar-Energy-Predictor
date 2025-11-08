@@ -277,16 +277,16 @@ function updateAnalysis({ predictions = [], total = 0, average = 0, max = 0, bes
     }
 
     if (highLabel) {
-    const percent = safeTotal ? Math.round((highCount / safeTotal) * 100) : 0;
-    highLabel.textContent = `High >= 500 W - ${highCount} (${percent}%)`;
+        const percent = safeTotal ? Math.round((highCount / safeTotal) * 100) : 0;
+        highLabel.textContent = `High >= 500 W - ${highCount} (${percent}%)`;
     }
     if (mediumLabel) {
-    const percent = safeTotal ? Math.round((mediumCount / safeTotal) * 100) : 0;
-    mediumLabel.textContent = `Medium 300-499 W - ${mediumCount} (${percent}%)`;
+        const percent = safeTotal ? Math.round((mediumCount / safeTotal) * 100) : 0;
+        mediumLabel.textContent = `Medium 300-499 W - ${mediumCount} (${percent}%)`;
     }
     if (lowLabel) {
-    const percent = safeTotal ? Math.round((lowCount / safeTotal) * 100) : 0;
-    lowLabel.textContent = `Low < 300 W - ${lowCount} (${percent}%)`;
+        const percent = safeTotal ? Math.round((lowCount / safeTotal) * 100) : 0;
+        lowLabel.textContent = `Low < 300 W - ${lowCount} (${percent}%)`;
     }
 
     if (topCitiesList) {
@@ -301,7 +301,7 @@ function updateAnalysis({ predictions = [], total = 0, average = 0, max = 0, bes
             sorted.slice(0, 3).forEach(prediction => {
                 const li = document.createElement('li');
                 li.className = 'top-city';
-                li.textContent = `${prediction.city} — ${formatPower(prediction.predicted_power)}`;
+                li.textContent = `${prediction.city} - ${formatPower(prediction.predicted_power)}`;
                 topCitiesList.appendChild(li);
             });
         }
