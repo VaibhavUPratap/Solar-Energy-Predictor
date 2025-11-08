@@ -147,6 +147,20 @@
                     Pinpoints the selected location and scales marker intensity with predicted output to provide instant spatial context.
                 </p>
                 <div id="map"></div>
+                <div class="map-insights" id="mapInsights">
+                    <div class="insight-chip highlight">
+                        <span class="insight-label">Predicted Output</span>
+                        <span class="insight-value" id="mapPredictedPower">--</span>
+                    </div>
+                    <div class="insight-chip">
+                        <span class="insight-label">Solar Elevation</span>
+                        <span class="insight-value" id="mapSolarElevation">--</span>
+                    </div>
+                    <div class="insight-chip">
+                        <span class="insight-label">Conditions</span>
+                        <span class="insight-value" id="mapConditions">--</span>
+                    </div>
+                </div>
                 <div class="map-legend">
                     <span><span class="legend-dot" style="background: #22d3ee;"></span> Higher output</span>
                     <span><span class="legend-dot" style="background: #a855f7;"></span> Moderate output</span>

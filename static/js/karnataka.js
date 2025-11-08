@@ -58,8 +58,8 @@ async function loadKarnatakaData(options = {}) {
     }
 
     try {
-    clearHotspotError();
-    console.log('[refresh] Fetching Karnataka predictions...');
+        clearHotspotError();
+        console.log('[refresh] Fetching Karnataka predictions...');
 
         const response = await fetch('/api/karnataka-predictions');
         const payload = await response.json();
@@ -190,16 +190,31 @@ function updateStatistics(predictions) {
     const maxPowerEl = document.getElementById('maxPower');
     const bestCityEl = document.getElementById('bestCity');
 
+    const mapAvgPowerEl = document.getElementById('mapAvgPower');
+    const mapPeakPowerEl = document.getElementById('mapPeakPower');
+    const mapBestCityEl = document.getElementById('mapBestCity');
+
     if (!predictions.length) {
         totalCitiesEl.textContent = '--';
         avgPowerEl.textContent = '--';
         maxPowerEl.textContent = '--';
         bestCityEl.textContent = '--';
+        if (mapAvgPowerEl) mapAvgPowerEl.textContent = '--';
+        if (mapPeakPowerEl) mapPeakPowerEl.textContent = '--';
+        if (mapBestCityEl) mapBestCityEl.textContent = '--';
+        updateAnalysis({ predictions: [] });
         return;
     }
 
     const total = predictions.length;
     const powers = predictions.map(p => Number(p.predicted_power) || 0);
+    const counts = { high: 0, medium: 0, low: 0 };
+
+    predictions.forEach(prediction => {
+        const tier = getPowerTier(Number(prediction.predicted_power) || 0);
+        counts[tier] = (counts[tier] || 0) + 1;
+    });
+
     const average = powers.reduce((sum, value) => sum + value, 0) / total;
     const max = Math.max(...powers);
     const best = predictions.find(p => Number(p.predicted_power) === max);
@@ -208,6 +223,100 @@ function updateStatistics(predictions) {
     avgPowerEl.textContent = `${Math.round(average)} W`;
     maxPowerEl.textContent = `${Math.round(max)} W`;
     bestCityEl.textContent = best ? best.city : '--';
+
+    if (mapAvgPowerEl) {
+        mapAvgPowerEl.textContent = `${Math.round(average)} W`;
+    }
+    if (mapPeakPowerEl) {
+        mapPeakPowerEl.textContent = `${Math.round(max)} W`;
+    }
+    if (mapBestCityEl) {
+        mapBestCityEl.textContent = best ? best.city : '--';
+    }
+
+    updateAnalysis({ predictions, total, average, max, best, counts });
+}
+
+/**
+ * Populate the analysis panel (distribution, top cities, narrative summary).
+ */
+function updateAnalysis({ predictions = [], total = 0, average = 0, max = 0, best = null, counts = {} }) {
+    const distributionHigh = document.getElementById('distributionHigh');
+    const distributionMedium = document.getElementById('distributionMedium');
+    const distributionLow = document.getElementById('distributionLow');
+    const distributionBar = document.getElementById('distributionBar');
+
+    const highLabel = document.getElementById('distributionHighLabel');
+    const mediumLabel = document.getElementById('distributionMediumLabel');
+    const lowLabel = document.getElementById('distributionLowLabel');
+
+    const topCitiesList = document.getElementById('topCitiesList');
+    const summaryEl = document.getElementById('analysisSummary');
+
+    const highCount = counts.high || 0;
+    const mediumCount = counts.medium || 0;
+    const lowCount = counts.low || 0;
+    const safeTotal = Math.max(total, 0);
+
+    const setSegmentWidth = (segment, count) => {
+        if (!segment) return;
+        if (!safeTotal || count <= 0) {
+            segment.style.width = '0%';
+            return;
+        }
+        const percent = Math.max(2, (count / safeTotal) * 100);
+        segment.style.width = `${Math.min(percent, 100)}%`;
+    };
+
+    setSegmentWidth(distributionHigh, highCount);
+    setSegmentWidth(distributionMedium, mediumCount);
+    setSegmentWidth(distributionLow, lowCount);
+
+    if (distributionBar) {
+        distributionBar.classList.toggle('hidden', !safeTotal);
+    }
+
+    if (highLabel) {
+    const percent = safeTotal ? Math.round((highCount / safeTotal) * 100) : 0;
+    highLabel.textContent = `High >= 500 W - ${highCount} (${percent}%)`;
+    }
+    if (mediumLabel) {
+    const percent = safeTotal ? Math.round((mediumCount / safeTotal) * 100) : 0;
+    mediumLabel.textContent = `Medium 300-499 W - ${mediumCount} (${percent}%)`;
+    }
+    if (lowLabel) {
+    const percent = safeTotal ? Math.round((lowCount / safeTotal) * 100) : 0;
+    lowLabel.textContent = `Low < 300 W - ${lowCount} (${percent}%)`;
+    }
+
+    if (topCitiesList) {
+        topCitiesList.innerHTML = '';
+        if (!predictions.length) {
+            const li = document.createElement('li');
+            li.className = 'top-city';
+            li.textContent = 'Awaiting prediction data...';
+            topCitiesList.appendChild(li);
+        } else {
+            const sorted = [...predictions].sort((a, b) => Number(b.predicted_power) - Number(a.predicted_power));
+            sorted.slice(0, 3).forEach(prediction => {
+                const li = document.createElement('li');
+                li.className = 'top-city';
+                li.textContent = `${prediction.city} — ${formatPower(prediction.predicted_power)}`;
+                topCitiesList.appendChild(li);
+            });
+        }
+    }
+
+    if (summaryEl) {
+        if (!predictions.length) {
+            summaryEl.textContent = 'Refresh to load statistical insights for Karnataka hotspots.';
+        } else {
+            const avgDisplay = formatPower(Math.round(average));
+            const peakDisplay = formatPower(max);
+            const leader = best ? `${best.city}` : 'Top city';
+            summaryEl.textContent = `${leader} leads the state with ${peakDisplay}. Average output sits at ${avgDisplay}, with ${highCount} cities currently in the high-performance band.`;
+        }
+    }
 }
 
 /**

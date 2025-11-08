@@ -68,6 +68,20 @@
                 </div>
                 <p class="card-subtitle">Marker size and colour scale with predicted wattage for each city.</p>
                 <div id="karnatakaMap"></div>
+                <div class="map-insights">
+                    <div class="insight-chip highlight">
+                        <span class="insight-label">Top City</span>
+                        <span class="insight-value" id="mapBestCity">--</span>
+                    </div>
+                    <div class="insight-chip">
+                        <span class="insight-label">Peak Output</span>
+                        <span class="insight-value" id="mapPeakPower">--</span>
+                    </div>
+                    <div class="insight-chip">
+                        <span class="insight-label">Average Output</span>
+                        <span class="insight-value" id="mapAvgPower">--</span>
+                    </div>
+                </div>
                 <div class="map-legend">
                     <span><span class="legend-dot legend-dot--high"></span> 500 W and above</span>
                     <span><span class="legend-dot legend-dot--mid"></span> 300 - 499 W</span>
@@ -82,6 +96,39 @@
                 <p class="card-subtitle">Select a city card to focus the map and inspect local conditions.</p>
                 <div id="citiesGrid" class="hotspot-card-grid">
                     <!-- Dynamically populated -->
+                </div>
+            </article>
+
+            <article class="glass-card analysis-panel">
+                <div class="card-header">
+                    <h2><span class="emoji">&#128202;</span>Graphs &amp; Analysis</h2>
+                </div>
+                <div class="analysis-grid">
+                    <section class="chart-card">
+                        <h3 class="chart-title">Output Distribution</h3>
+                        <div class="distribution-bar" id="distributionBar">
+                            <div class="distribution-segment high" id="distributionHigh"></div>
+                            <div class="distribution-segment medium" id="distributionMedium"></div>
+                            <div class="distribution-segment low" id="distributionLow"></div>
+                        </div>
+                        <div class="distribution-legend">
+                            <span><span class="legend-dot legend-dot--high"></span><span id="distributionHighLabel">High ≥ 500 W — 0</span></span>
+                            <span><span class="legend-dot legend-dot--mid"></span><span id="distributionMediumLabel">Medium 300-499 W — 0</span></span>
+                            <span><span class="legend-dot legend-dot--low"></span><span id="distributionLowLabel">Low &lt; 300 W — 0</span></span>
+                        </div>
+                    </section>
+
+                    <section class="chart-card">
+                        <h3 class="chart-title">Top Performers</h3>
+                        <ol class="top-cities" id="topCitiesList">
+                            <li class="top-city">Awaiting prediction data…</li>
+                        </ol>
+                    </section>
+
+                    <section class="chart-card">
+                        <h3 class="chart-title">Quick Insights</h3>
+                        <p class="analysis-summary" id="analysisSummary">Refresh to load statistical insights for Karnataka hotspots.</p>
+                    </section>
                 </div>
             </article>
         </section>

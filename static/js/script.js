@@ -129,6 +129,24 @@ function displayResults(data) {
     document.getElementById('poaSky').textContent = formatMetric(data.solar_parameters.poa_sky_diffuse, { decimals: 0, suffix: ' W/m²' });
     document.getElementById('poaGround').textContent = formatMetric(data.solar_parameters.poa_ground_diffuse, { decimals: 0, suffix: ' W/m²' });
     document.getElementById('solarElevation').textContent = formatMetric(data.solar_parameters.solar_elevation, { decimals: 1, suffix: '°' });
+
+    const mapPowerEl = document.getElementById('mapPredictedPower');
+    if (mapPowerEl) {
+        mapPowerEl.textContent = formatMetric(data.prediction.predicted_power, { decimals: 0, suffix: ' W' });
+    }
+
+    const mapSolarEl = document.getElementById('mapSolarElevation');
+    if (mapSolarEl) {
+        mapSolarEl.textContent = formatMetric(data.solar_parameters.solar_elevation, { decimals: 1, suffix: '°' });
+    }
+
+    const mapConditionsEl = document.getElementById('mapConditions');
+    if (mapConditionsEl) {
+        const temp = formatMetric(data.weather.temperature, { decimals: 1, suffix: '°C' });
+        const wind = formatMetric(data.weather.wind_speed, { decimals: 1, suffix: ' m/s' });
+        const clouds = formatMetric(data.weather.clouds, { decimals: 0, suffix: '% clouds' });
+        mapConditionsEl.textContent = `${temp} • ${wind} • ${clouds}`;
+    }
     
     // Show results with animation
     resultsSection.classList.remove('hidden');
