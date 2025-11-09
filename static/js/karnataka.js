@@ -392,12 +392,12 @@ function getPowerTier(power) {
 function getMarkerColor(tier) {
     switch (tier) {
         case 'high':
-            return '#22d3ee';
+            return '#2dd4bf';
         case 'medium':
-            return '#a855f7';
+            return '#38bdf8';
         case 'low':
         default:
-            return '#f97316';
+            return '#fbbf24';
     }
 }
 

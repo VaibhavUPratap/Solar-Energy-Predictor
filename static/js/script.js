@@ -111,8 +111,13 @@ async function makePrediction(city) {
 function displayResults(data) {
     const resultsSection = document.getElementById('resultsSection');
     
+    const isNight = Boolean(data.prediction && data.prediction.is_night);
+    const nightMessage = (data.prediction && data.prediction.night_message) || '';
+
     // Update result values
-    document.getElementById('predictedPower').textContent = formatMetric(data.prediction.predicted_power, { decimals: 0, suffix: ' W' });
+    const predictedPowerDisplay = formatMetric(data.prediction.predicted_power, { decimals: 0, suffix: ' W' });
+    const predictedPowerEl = document.getElementById('predictedPower');
+    predictedPowerEl.textContent = isNight ? `${predictedPowerDisplay} (nighttime)` : predictedPowerDisplay;
     document.getElementById('temperature').textContent = formatMetric(data.weather.temperature, { decimals: 1, suffix: '°C' });
     document.getElementById('windSpeed').textContent = formatMetric(data.weather.wind_speed, { decimals: 1, suffix: ' m/s' });
     document.getElementById('clouds').textContent = formatMetric(data.weather.clouds, { decimals: 0, suffix: '%' });
@@ -120,9 +125,17 @@ function displayResults(data) {
     // Update location info
     document.getElementById('locationName').textContent = 
         `${data.prediction.city}, ${data.prediction.country}`;
-    const description = (data.weather && typeof data.weather.description === 'string') ? data.weather.description.trim() : '';
+    let description = (data.weather && typeof data.weather.description === 'string')
+        ? data.weather.description.trim()
+        : '';
+    if (description) {
+        description = capitalizeFirstLetter(description);
+    }
+    if (isNight && nightMessage) {
+        description = nightMessage;
+    }
     document.getElementById('weatherDescription').textContent = 
-        description ? capitalizeFirstLetter(description) : 'No weather summary available.';
+        description || 'No weather summary available.';
     
     // Update solar parameters
     document.getElementById('poaDirect').textContent = formatMetric(data.solar_parameters.poa_direct, { decimals: 0, suffix: ' W/m²' });
@@ -132,7 +145,7 @@ function displayResults(data) {
 
     const mapPowerEl = document.getElementById('mapPredictedPower');
     if (mapPowerEl) {
-        mapPowerEl.textContent = formatMetric(data.prediction.predicted_power, { decimals: 0, suffix: ' W' });
+        mapPowerEl.textContent = isNight ? `${predictedPowerDisplay} (nighttime)` : predictedPowerDisplay;
     }
 
     const mapSolarEl = document.getElementById('mapSolarElevation');
@@ -145,7 +158,8 @@ function displayResults(data) {
         const temp = formatMetric(data.weather.temperature, { decimals: 1, suffix: '°C' });
         const wind = formatMetric(data.weather.wind_speed, { decimals: 1, suffix: ' m/s' });
         const clouds = formatMetric(data.weather.clouds, { decimals: 0, suffix: '% clouds' });
-        mapConditionsEl.textContent = `${temp} • ${wind} • ${clouds}`;
+        const baseConditions = `${temp} • ${wind} • ${clouds}`;
+        mapConditionsEl.textContent = isNight ? `Nighttime • ${baseConditions}` : baseConditions;
     }
     
     // Show results with animation
@@ -179,11 +193,17 @@ function updateMap(dataset) {
         map.removeLayer(marker);
     }
 
+    const isNight = Boolean(prediction.is_night);
     const predictedPowerRaw = Number(prediction.predicted_power);
     const predictedPower = Number.isFinite(predictedPowerRaw) ? predictedPowerRaw : 0;
     const powerTier = getPowerTier(predictedPower);
-    const fillColor = getMarkerColor(powerTier);
-    const radius = Math.max(10, Math.min(24, predictedPower / 40));
+    const fillColor = isNight ? '#475569' : getMarkerColor(powerTier);
+    const radius = isNight ? 8 : Math.max(10, Math.min(24, predictedPower / 40));
+    const popupPowerDisplay = formatMetric(predictedPower, { decimals: 0, suffix: ' W', round: true });
+    const popupPower = isNight ? `${popupPowerDisplay} (night)` : popupPowerDisplay;
+    const nightPopupNote = isNight
+        ? '<p style="margin:0.35rem 0 0; color:#94a3b8;">Nighttime conditions: solar output is effectively zero.</p>'
+        : '';
 
     marker = L.circleMarker([lat, lon], {
         radius,
@@ -197,9 +217,10 @@ function updateMap(dataset) {
     marker.bindPopup(`
         <div style="text-align:center;">
             <h3 style="margin-bottom:0.35rem;">${city}</h3>
-            <p style="font-weight:600; margin-bottom:0.35rem;">${formatMetric(predictedPower, { decimals: 0, suffix: ' W', round: true })}</p>
+            <p style="font-weight:600; margin-bottom:0.35rem;">${popupPower}</p>
             <p style="margin:0;">${formatMetric(weather.temperature, { decimals: 1, suffix: '°C' })} · ${formatMetric(weather.wind_speed, { decimals: 1, suffix: ' m/s' })}</p>
             <p style="margin:0.2rem 0 0;">${formatMetric(weather.clouds, { decimals: 0, suffix: '% clouds' })}</p>
+            ${nightPopupNote}
         </div>
     `).openPopup();
 
@@ -264,11 +285,11 @@ function getPowerTier(power) {
 function getMarkerColor(tier) {
     switch (tier) {
         case 'high':
-            return '#22d3ee';
+            return '#2dd4bf';
         case 'medium':
-            return '#a855f7';
+            return '#38bdf8';
         default:
-            return '#f97316';
+            return '#fbbf24';
     }
 }
 
