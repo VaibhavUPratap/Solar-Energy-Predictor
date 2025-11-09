@@ -58,6 +58,20 @@ body::before {
     pointer-events: none;
 }
 
+body::after {
+    content: '';
+    position: fixed;
+    inset: -15vh -40vw;
+    background:
+        radial-gradient(circle at 10% 30%, rgba(236, 252, 255, 0.15) 0%, rgba(236, 252, 255, 0.15) 40%, transparent 70%) 0 0 / 420px 200px repeat-x,
+        radial-gradient(circle at 60% 60%, rgba(226, 232, 240, 0.12) 0%, rgba(226, 232, 240, 0.12) 42%, transparent 72%) 0 0 / 520px 240px repeat-x,
+        radial-gradient(circle at 30% 50%, rgba(148, 163, 184, 0.08) 0%, rgba(148, 163, 184, 0.08) 38%, transparent 68%) 0 0 / 640px 280px repeat-x;
+    opacity: 0.55;
+    animation: cloudDrift 110s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
 main, .page-shell, .container {
     position: relative;
     z-index: 1;
@@ -484,6 +498,18 @@ main, .page-shell, .container {
     border-radius: 999px;
 }
 
+.legend-dot--high {
+    background: var(--accent-cyan);
+}
+
+.legend-dot--mid {
+    background: var(--accent-violet);
+}
+
+.legend-dot--low {
+    background: var(--accent-amber);
+}
+
 .map-insights {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -640,6 +666,15 @@ tbody tr:hover {
 }
 
 /* Animations */
+@keyframes cloudDrift {
+    0% {
+        background-position: 0 0, 0 0, 0 0;
+    }
+    100% {
+        background-position: -900px 0, -1400px 0, -1800px 0;
+    }
+}
+
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
