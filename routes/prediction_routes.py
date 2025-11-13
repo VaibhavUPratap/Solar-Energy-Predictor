@@ -7,6 +7,7 @@ import joblib
 import numpy as np
 
 from services import WeatherService, HotspotService, KARNATAKA_LOCATIONS
+from services.solar_data import get_solar_data_from_open_meteo, get_fallback_solar_data
 from services.predictor import prid as predictor_prid
 from database.init_db import insert_prediction, get_recent_predictions
 from config import Config
@@ -90,7 +91,24 @@ def predict_solar_power():
                 is_night = True
             next_sunrise_local = None
 
-        solar_params = Config.DEFAULT_SOLAR_PARAMS.copy()
+        lat = float(weather_data['latitude'])
+        lon = float(weather_data['longitude'])
+
+        try:
+            solar_data = get_solar_data_from_open_meteo(lat, lon)
+        except Exception as exc:
+            print(f"⚠ Warning: Open-Meteo fetch failed ({exc}). Using fallback irradiance values.")
+            solar_data = get_fallback_solar_data(lat, lon)
+
+        solar_params = {
+            'poa_direct': float(solar_data.get('poa_direct', Config.DEFAULT_SOLAR_PARAMS['poa_direct'])),
+            'poa_sky_diffuse': float(solar_data.get('poa_sky_diffuse', Config.DEFAULT_SOLAR_PARAMS['poa_sky_diffuse'])),
+            'poa_ground_diffuse': float(solar_data.get('poa_ground_diffuse', Config.DEFAULT_SOLAR_PARAMS['poa_ground_diffuse'])),
+            'solar_elevation': float(solar_data.get('solar_elevation', Config.DEFAULT_SOLAR_PARAMS['solar_elevation'])),
+        }
+
+        ambient_temp = float(solar_data.get('temp_air', weather_data['temp_air']))
+        wind_speed = float(solar_data.get('wind_speed', weather_data['wind_speed']))
         night_message = ''
         predicted_power = 0.0
 
@@ -116,8 +134,9 @@ def predict_solar_power():
                 )
         else:
             cloud_factor = (100 - weather_data['clouds']) / 100.0
+            cloud_factor = max(0.0, min(1.0, cloud_factor))
             solar_params['poa_direct'] *= cloud_factor
-            solar_params['poa_sky_diffuse'] *= (0.5 + 0.5 * cloud_factor)
+            solar_params['poa_sky_diffuse'] *= max(0.0, (0.5 + 0.5 * cloud_factor))
 
             features = np.array([
                 [
@@ -125,8 +144,8 @@ def predict_solar_power():
                     solar_params['poa_sky_diffuse'],
                     solar_params['poa_ground_diffuse'],
                     solar_params['solar_elevation'],
-                    weather_data['wind_speed'],
-                    weather_data['temp_air']
+                    wind_speed,
+                    ambient_temp
                 ]
             ])
 
@@ -139,8 +158,8 @@ def predict_solar_power():
                     solar_params['poa_direct'],
                     solar_params['poa_sky_diffuse'],
                     solar_params['solar_elevation'],
-                    weather_data['wind_speed'],
-                    weather_data['temp_air']
+                    wind_speed,
+                    ambient_temp
                 )
                 predicted_power = float(predicted_arr[0])
             except Exception:
@@ -159,8 +178,8 @@ def predict_solar_power():
             'poa_sky_diffuse': solar_params['poa_sky_diffuse'],
             'poa_ground_diffuse': solar_params['poa_ground_diffuse'],
             'solar_elevation': solar_params['solar_elevation'],
-            'wind_speed': weather_data['wind_speed'],
-            'temp_air': weather_data['temp_air'],
+            'wind_speed': wind_speed,
+            'temp_air': ambient_temp,
             'predicted_P': round(predicted_power, 2)
         }
 
@@ -189,8 +208,8 @@ def predict_solar_power():
                 'next_sunrise': next_sunrise_local.isoformat() if next_sunrise_local else None
             },
             'weather': {
-                'temperature': weather_data['temp_air'],
-                'wind_speed': weather_data['wind_speed'],
+                'temperature': ambient_temp,
+                'wind_speed': wind_speed,
                 'clouds': weather_data['clouds'],
                 'humidity': weather_data['humidity'],
                 'description': weather_data['weather_description'],
