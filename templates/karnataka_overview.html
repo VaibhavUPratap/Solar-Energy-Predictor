@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karnataka Energy Overview · Solar Energy Predictor</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    animation: {
+                        'float-slow': 'floaty 6s ease-in-out infinite'
+                    }
+                }
+            }
+        };
+    </script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/karnataka.css') }}">
+</head>
+<body>
+    <main class="container">
+        <header class="hero">
+            <div class="hero-content">
+                <span class="brand-badge">
+                    <span>&#9889;</span>
+                    Karnataka Energy Intelligence
+                </span>
+                <h1 class="hero-title">Karnataka Hotspots · Detailed Overview</h1>
+                <p class="hero-subtitle">
+                    Explore deeper insights into the statewide hotspot predictions with comparative charts,
+                    distribution analysis, and weather-linked performance cues.
+                </p>
+                <div class="hero-actions">
+                    <button id="overviewRefreshBtn" type="button" class="button-primary button-compact">
+                        <span id="overviewRefreshLabel">Refresh Snapshot</span>
+                        <span id="overviewRefreshLoader" class="loader hidden" aria-hidden="true"></span>
+                    </button>
+                    <a href="{{ url_for('prediction.karnataka_hotspots') }}" class="button-outline">&#128506;&#65039; Back to Hotspots</a>
+                    <a href="/" class="button-outline">&#8592; Back to Predictor</a>
+                </div>
+                <div class="hero-stats">
+                    <div class="hero-pill"><span class="emoji">&#9201;&#65039;</span>Last sync <span id="overviewLastUpdated">--</span></div>
+                    <div class="hero-pill"><span class="emoji">&#128187;</span>Data source: AI hotspot service</div>
+                    <div class="hero-pill"><span class="emoji">&#128200;</span>Charts powered by Chart.js</div>
+                </div>
+            </div>
+        </header>
+
+        <div id="overviewError" class="error-banner hidden"></div>
+
+        <section class="glass-card stats-panel">
+            <div class="card-header">
+                <h2><span class="emoji">&#128202;</span>Energy Snapshot</h2>
+            </div>
+            <div class="stat-grid">
+                <div class="stat-card primary">
+                    <span class="stat-title">Total Predicted Output</span>
+                    <span class="stat-value" id="totalOutput">--</span>
+                    <span class="stat-icon">&#9889;</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-title">Average City Output</span>
+                    <span class="stat-value" id="avgOutput">--</span>
+                    <span class="stat-icon">&#128200;</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-title">Median Output</span>
+                    <span class="stat-value" id="medianOutput">--</span>
+                    <span class="stat-icon">&#128206;</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-title">High-performing Cities</span>
+                    <span class="stat-value" id="highCities">--</span>
+                    <span class="stat-icon">&#127942;</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-title">Average Temperature</span>
+                    <span class="stat-value" id="avgTemp">--</span>
+                    <span class="stat-icon">&#127777;&#65039;</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-title">Average Wind Speed</span>
+                    <span class="stat-value" id="avgWind">--</span>
+                    <span class="stat-icon">&#127788;</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="layout-grid overview-layout">
+            <article class="glass-card chart-card large">
+                <div class="card-header">
+                    <h2><span class="emoji">&#127942;</span>Energy Leaders</h2>
+                    <p class="card-subtitle">Top-performing cities ranked by predicted wattage.</p>
+                </div>
+                <canvas id="topCitiesChart" height="260"></canvas>
+            </article>
+
+            <article class="glass-card chart-card">
+                <div class="card-header">
+                    <h2><span class="emoji">&#128200;</span>Performance Distribution</h2>
+                    <p class="card-subtitle">Share of cities in high, medium, and low output bands.</p>
+                </div>
+                <canvas id="distributionChart" height="260"></canvas>
+            </article>
+
+            <article class="glass-card chart-card">
+                <div class="card-header">
+                    <h2><span class="emoji">&#127777;&#65039;</span>Weather Influence</h2>
+                    <p class="card-subtitle">Scatter of predicted output vs. temperature (bubble size = wind speed).</p>
+                </div>
+                <canvas id="weatherChart" height="260"></canvas>
+                <p class="analysis-summary" id="weatherSummary">Awaiting data...</p>
+            </article>
+        </section>
+
+        <article class="glass-card table-panel">
+            <div class="card-header">
+                <h2><span class="emoji">&#128221;</span>City Detail Table</h2>
+                <p class="card-subtitle">Full list of hotspot predictions with supporting weather metrics.</p>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>City</th>
+                            <th>Predicted Power</th>
+                            <th>Temperature</th>
+                            <th>Wind Speed</th>
+                            <th>Cloud Cover</th>
+                            <th>Humidity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cityTableBody">
+                        <tr><td colspan="6">Loading data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <footer class="footer">
+            <p>Crafted with Flask, Leaflet, pvlib, and Chart.js for intelligent energy planning.</p>
+            <p>© 2025 Solar Energy Predictor · <a href="https://github.com" target="_blank" rel="noopener">Explore on GitHub</a></p>
+        </footer>
+    </main>
+
+    <div id="overviewLoading" class="loading-overlay hidden">
+        <div class="loading-dialog">
+            <div class="loader"></div>
+            <p>Loading Karnataka overview...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='js/karnataka_overview.js') }}"></script>
+</body>
+</html>

@@ -287,6 +287,12 @@ def karnataka_hotspots():
     return render_template('karnataka_hotspots.html')
 
 
+@prediction_bp.route('/karnataka-overview')
+def karnataka_overview():
+    """Render the detailed overview page for Karnataka hotspots."""
+    return render_template('karnataka_overview.html')
+
+
 @prediction_bp.route('/karnataka-predictions', methods=['GET'])
 def get_karnataka_predictions():
     """Generate or reuse cached hotspot predictions for Karnataka cities."""
