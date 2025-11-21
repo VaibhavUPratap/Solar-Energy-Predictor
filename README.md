@@ -5,13 +5,6 @@ A production-ready Flask web application that predicts real-time solar power out
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Flask](https://img.shields.io/badge/Flask-3.0-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
-# 🌞 Solar Energy Predictor
-
-A production-ready Flask web application that predicts real-time solar power output using machine learning and live weather data.
-
-![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
-![Flask](https://img.shields.io/badge/Flask-3.0-green.svg)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ## 📋 Features
 
