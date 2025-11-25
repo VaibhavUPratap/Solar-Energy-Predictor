@@ -7,7 +7,7 @@ import joblib
 import numpy as np
 
 from services import WeatherService, HotspotService, KARNATAKA_LOCATIONS
-from services.solar_data import get_solar_data_from_open_meteo, get_fallback_solar_data
+from models.pv_data import get_data as get_pv_data
 from services.predictor import prid as predictor_prid
 from database.init_db import insert_prediction, get_recent_predictions
 from config import Config
@@ -57,23 +57,46 @@ def predict_solar_power():
                 'message': 'City name cannot be empty'
             }), 400
 
-        weather_data = weather_service.get_weather_by_city(city_name)
+        try:
+            # Use integrated user-provided function
+            from models.integrated_model import pridictionn
+            predicted_power, solar_data = pridictionn(city_name)
+        except Exception as e:
+            print(f"Error in prediction: {e}")
+            return jsonify({
+                'error': 'Prediction failed',
+                'message': str(e)
+            }), 500
 
-        if 'error' in weather_data:
-            return jsonify(weather_data), 400
-
-        timezone_offset = int(weather_data.get('timezone') or 0)
+        # Extract weather/solar data from metadata returned by pridictionn
+        lat = float(solar_data['latitude'])
+        lon = float(solar_data['longitude'])
+        utc_offset = solar_data.get('utc_offset_seconds', 0)
+        timezone_str = solar_data.get('timezone', 'UTC')
+        
+        # Current time in location's timezone
         utc_now = datetime.utcnow()
-        local_time = utc_now + timedelta(seconds=timezone_offset)
+        local_time = utc_now + timedelta(seconds=utc_offset)
 
+        # Sunrise/Sunset logic
+        sunrise_str = solar_data.get('sunrise')
+        sunset_str = solar_data.get('sunset')
         sunrise_local = None
         sunset_local = None
-        sunrise_ts = weather_data.get('sunrise')
-        sunset_ts = weather_data.get('sunset')
-        if sunrise_ts is not None:
-            sunrise_local = datetime.utcfromtimestamp(int(sunrise_ts) + timezone_offset)
-        if sunset_ts is not None:
-            sunset_local = datetime.utcfromtimestamp(int(sunset_ts) + timezone_offset)
+        
+        if sunrise_str:
+            try:
+                sunrise_dt = datetime.fromisoformat(sunrise_str)
+                sunrise_local = sunrise_dt
+            except ValueError:
+                pass
+
+        if sunset_str:
+            try:
+                sunset_dt = datetime.fromisoformat(sunset_str)
+                sunset_local = sunset_dt
+            except ValueError:
+                pass
 
         is_night = False
         next_sunrise_local = sunrise_local
@@ -91,35 +114,43 @@ def predict_solar_power():
                 is_night = True
             next_sunrise_local = None
 
-        lat = float(weather_data['latitude'])
-        lon = float(weather_data['longitude'])
-
-        try:
-            solar_data = get_solar_data_from_open_meteo(lat, lon)
-        except Exception as exc:
-            print(f"⚠ Warning: Open-Meteo fetch failed ({exc}). Using fallback irradiance values.")
-            solar_data = get_fallback_solar_data(lat, lon)
-
         solar_params = {
-            'poa_direct': float(solar_data.get('poa_direct', Config.DEFAULT_SOLAR_PARAMS['poa_direct'])),
-            'poa_sky_diffuse': float(solar_data.get('poa_sky_diffuse', Config.DEFAULT_SOLAR_PARAMS['poa_sky_diffuse'])),
-            'poa_ground_diffuse': float(solar_data.get('poa_ground_diffuse', Config.DEFAULT_SOLAR_PARAMS['poa_ground_diffuse'])),
-            'solar_elevation': float(solar_data.get('solar_elevation', Config.DEFAULT_SOLAR_PARAMS['solar_elevation'])),
+            'poa_direct': float(solar_data.get('poa_direct', 0.0)),
+            'poa_sky_diffuse': float(solar_data.get('poa_sky_diffuse', 0.0)),
+            'poa_ground_diffuse': float(solar_data.get('poa_ground_diffuse', 0.0)),
+            'solar_elevation': float(solar_data.get('solar_elevation', 0.0)),
         }
 
-        ambient_temp = float(solar_data.get('temp_air', weather_data['temp_air']))
-        wind_speed = float(solar_data.get('wind_speed', weather_data['wind_speed']))
+        ambient_temp = float(solar_data.get('temp_air', 25.0))
+        wind_speed = float(solar_data.get('wind_speed', 1.0))
+        cloud_cover = float(solar_data.get('clouds', 0.0))
+        humidity = float(solar_data.get('humidity', 50.0))
+        weather_code = solar_data.get('weather_code', 0)
+        
+        # Simple weather description mapping
+        weather_description = "Unknown"
+        if weather_code == 0: weather_description = "Clear sky"
+        elif weather_code in [1, 2, 3]: weather_description = "Partly cloudy"
+        elif weather_code in [45, 48]: weather_description = "Fog"
+        elif weather_code >= 51: weather_description = "Rain/Snow/Drizzle"
+
         night_message = ''
-        predicted_power = 0.0
-
+        
+        # Prediction is already done by pridictionn
+        # But we might want to clamp it or apply night logic if pridictionn doesn't?
+        # User's pridictionn clamps negative to 0.
+        # But does it handle night? It uses solar elevation and radiation.
+        # If radiation is 0 (night), prediction should be low/zero.
+        # We'll trust the function but enforce max(0, ...) just in case.
+        
         if is_night:
-            solar_params['poa_direct'] = 0.0
-            solar_params['poa_sky_diffuse'] = 0.0
-            solar_params['poa_ground_diffuse'] = 0.0
-            solar_params['solar_elevation'] = 0.0
-
+            # Force zero if we are sure it's night, to be safe?
+            # User function might return small noise.
+            # Let's keep the existing night logic for UI consistency.
+            predicted_power = 0.0
+            
             local_time_label = local_time.strftime('%H:%M')
-            city_label = weather_data.get('city', 'this location')
+            city_label = city_name
 
             if next_sunrise_local:
                 sunrise_label = next_sunrise_local.strftime('%H:%M')
@@ -132,48 +163,14 @@ def predict_solar_power():
                     f"It is currently night in {city_label} ({local_time_label} local time). "
                     "Solar output is expected to be zero."
                 )
-        else:
-            cloud_factor = (100 - weather_data['clouds']) / 100.0
-            cloud_factor = max(0.0, min(1.0, cloud_factor))
-            solar_params['poa_direct'] *= cloud_factor
-            solar_params['poa_sky_diffuse'] *= max(0.0, (0.5 + 0.5 * cloud_factor))
-
-            features = np.array([
-                [
-                    solar_params['poa_direct'],
-                    solar_params['poa_sky_diffuse'],
-                    solar_params['poa_ground_diffuse'],
-                    solar_params['solar_elevation'],
-                    wind_speed,
-                    ambient_temp
-                ]
-            ])
-
-            try:
-                time_stamp = local_time.hour
-                predicted_arr = predictor_prid(
-                    model,
-                    city_name,
-                    time_stamp,
-                    solar_params['poa_direct'],
-                    solar_params['poa_sky_diffuse'],
-                    solar_params['solar_elevation'],
-                    wind_speed,
-                    ambient_temp
-                )
-                predicted_power = float(predicted_arr[0])
-            except Exception:
-                predicted_power = float(model.predict(features)[0])
-
-            next_sunrise_local = None
 
         predicted_power = max(0, predicted_power)
 
         db_data = {
             'timestamp': datetime.now().isoformat(),
-            'city': weather_data['city'],
-            'latitude': weather_data['latitude'],
-            'longitude': weather_data['longitude'],
+            'city': city_name,
+            'latitude': lat,
+            'longitude': lon,
             'poa_direct': solar_params['poa_direct'],
             'poa_sky_diffuse': solar_params['poa_sky_diffuse'],
             'poa_ground_diffuse': solar_params['poa_ground_diffuse'],
@@ -193,36 +190,34 @@ def predict_solar_power():
         response = {
             'success': True,
             'prediction': {
-                'city': weather_data['city'],
-                'country': weather_data['country'],
-                'latitude': weather_data['latitude'],
-                'longitude': weather_data['longitude'],
+                'city': city_name,
+                'country': "Unknown",
+                'latitude': lat,
+                'longitude': lon,
                 'predicted_power': round(predicted_power, 2),
                 'unit': 'W',
                 'timestamp': db_data['timestamp'],
                 'is_night': is_night,
                 'local_time': local_time.isoformat(),
-                'night_message': night_message,
-                'sunrise': sunrise_local.isoformat() if sunrise_local else None,
-                'sunset': sunset_local.isoformat() if sunset_local else None,
                 'next_sunrise': next_sunrise_local.isoformat() if next_sunrise_local else None
             },
             'weather': {
                 'temperature': ambient_temp,
                 'wind_speed': wind_speed,
-                'clouds': weather_data['clouds'],
-                'humidity': weather_data['humidity'],
-                'description': weather_data['weather_description'],
+                'clouds': cloud_cover,
+                'humidity': humidity,
+                'description': weather_description,
                 'sunrise': sunrise_local.isoformat() if sunrise_local else None,
                 'sunset': sunset_local.isoformat() if sunset_local else None,
-                'timezone_offset': timezone_offset
+                'timezone_offset': utc_offset
             },
             'solar_parameters': {
                 'poa_direct': round(solar_params['poa_direct'], 2),
                 'poa_sky_diffuse': round(solar_params['poa_sky_diffuse'], 2),
                 'poa_ground_diffuse': round(solar_params['poa_ground_diffuse'], 2),
                 'solar_elevation': solar_params['solar_elevation']
-            }
+            },
+            'night_message': night_message
         }
 
         return jsonify(response), 200

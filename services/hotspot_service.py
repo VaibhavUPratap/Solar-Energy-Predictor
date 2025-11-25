@@ -8,7 +8,9 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import numpy as np
 
 from services.predictor import prid
-from services.solar_data import get_solar_data_from_open_meteo, get_fallback_solar_data
+from models.pv_data import get_data as get_pv_data
+
+from services.solar_data import get_fallback_solar_data
 
 KARNATAKA_LOCATIONS: Dict[str, Tuple[float, float]] = {
     "Bengaluru (Bangalore)": (12.9716, 77.5946),
@@ -100,7 +102,7 @@ class HotspotService:
         month_value = timestamp.month
 
         for city, (lat, lon) in self._locations.items():
-            solar_data = self._fetch_solar_data(lat, lon)
+            solar_data = self._fetch_solar_data(city)
             predicted_power = self._predict_power(model_source, city, month_value, solar_data)
             record = {
                 "city": city,
@@ -131,12 +133,17 @@ class HotspotService:
             age = (datetime.now(timezone.utc) - self._last_update).total_seconds()
         return age >= self._update_interval
 
-    @staticmethod
-    def _fetch_solar_data(lat: float, lon: float) -> Dict[str, float]:
+    def _fetch_solar_data(self, city: str) -> Dict[str, float]:
+        """Fetch solar data for a city using the unified pv_data module.
+        The pv_data.get_data function handles location lookup and API calls.
+        """
         try:
-            return get_solar_data_from_open_meteo(lat, lon)
+            return get_pv_data(city)
         except Exception:
+            # Fallback to existing fallback logic based on coordinates if needed
+            lat, lon = self._locations.get(city, (0.0, 0.0))
             return get_fallback_solar_data(lat, lon)
+
 
     def _predict_power(
         self,

@@ -1,11 +1,3 @@
-"""
-Prediction Routes Module
-Defines Flask routes for solar power prediction and history retrieval
-"""
-from flask import Blueprint, request, jsonify, render_template
-from datetime import datetime
-import numpy as np
-from services import WeatherService, predict_solar_power
 from database.init_db import insert_prediction, get_recent_predictions
 from config import Config
 import requests
@@ -301,19 +293,6 @@ def get_prediction_history():
             })
         
         return jsonify({
-            'success': True,
-            'count': len(formatted_predictions),
-            'predictions': formatted_predictions
-        }), 200
-    
-    except Exception as e:
-        print(f"✗ History retrieval error: {str(e)}")
-        return jsonify({
-            'error': 'Failed to retrieve history',
-            'message': str(e)
-        }), 500
-
-
 @prediction_bp.route('/history-page')
 def history_page():
     """
