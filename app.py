@@ -2,6 +2,8 @@
 Main Flask Application Module
 Initializes and configures the Flask app with routes and blueprints
 """
+import os
+
 from flask import Flask, render_template
 from flask_cors import CORS
 from config import Config
@@ -78,4 +80,6 @@ app = create_app()
 if __name__ == '__main__':
     # This block runs only if app.py is executed directly
     # For production, use run.py instead
-    app.run(debug=Config.DEBUG)
+    port = int(os.getenv('PORT', 5000))
+    host = os.getenv('HOST', '0.0.0.0')
+    app.run(host=host, port=port, debug=Config.DEBUG)
