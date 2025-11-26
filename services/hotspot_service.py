@@ -5,12 +5,7 @@ from datetime import datetime, timezone
 import threading
 from typing import Dict, Iterable, List, Optional, Tuple
 
-import numpy as np
-
-from services.predictor import prid
-from models.pv_data import get_data as get_pv_data
-
-from services.solar_data import get_fallback_solar_data
+from models.integrated_model import pridictionn
 
 KARNATAKA_LOCATIONS: Dict[str, Tuple[float, float]] = {
     "Bengaluru (Bangalore)": (12.9716, 77.5946),
@@ -96,30 +91,42 @@ class HotspotService:
         return predictions, last_update
 
     def update_predictions(self) -> List[Dict[str, float]]:
-        model_source = self._model if self._model is not None else self._model_path
         predictions: List[Dict[str, float]] = []
         timestamp = datetime.now(timezone.utc)
-        month_value = timestamp.month
 
-        for city, (lat, lon) in self._locations.items():
-            solar_data = self._fetch_solar_data(city)
-            predicted_power = self._predict_power(model_source, city, month_value, solar_data)
-            record = {
-                "city": city,
-                "latitude": lat,
-                "longitude": lon,
-                "predicted_power": round(predicted_power, 2),
-                "temperature": float(solar_data["temp_air"]),
-                "wind_speed": float(solar_data["wind_speed"]),
-                "clouds": float(solar_data.get("clouds", 0.0)),
-                "humidity": float(solar_data.get("humidity", 0.0)),
-                "weather_description": solar_data.get("weather_description", "Clear sky"),
-                "poa_direct": float(solar_data["poa_direct"]),
-                "poa_sky_diffuse": float(solar_data["poa_sky_diffuse"]),
-                "poa_ground_diffuse": float(solar_data.get("poa_ground_diffuse", 0.0)),
-                "solar_elevation": float(solar_data["solar_elevation"]),
-            }
-            predictions.append(record)
+        for city in self._locations.keys():
+            try:
+                # Use unified prediction function
+                predicted_power, solar_data = pridictionn(city)
+                
+                # Map metadata to expected structure
+                weather_code = solar_data.get("weather_code", 0)
+                weather_description = "Unknown"
+                if weather_code == 0: weather_description = "Clear sky"
+                elif weather_code in [1, 2, 3]: weather_description = "Partly cloudy"
+                elif weather_code in [45, 48]: weather_description = "Fog"
+                elif weather_code >= 51: weather_description = "Rain/Snow/Drizzle"
+
+                record = {
+                    "city": city,
+                    "latitude": float(solar_data.get("latitude", 0.0)),
+                    "longitude": float(solar_data.get("longitude", 0.0)),
+                    "predicted_power": round(predicted_power, 2),
+                    "temperature": float(solar_data.get("temp_air", 0.0)),
+                    "wind_speed": float(solar_data.get("wind_speed", 0.0)),
+                    "clouds": float(solar_data.get("clouds", 0.0)),
+                    "humidity": float(solar_data.get("humidity", 0.0)),
+                    "weather_description": weather_description,
+                    "poa_direct": float(solar_data.get("poa_direct", 0.0)),
+                    "poa_sky_diffuse": float(solar_data.get("poa_sky_diffuse", 0.0)),
+                    "poa_ground_diffuse": float(solar_data.get("poa_ground_diffuse", 0.0)),
+                    "solar_elevation": float(solar_data.get("solar_elevation", 0.0)),
+                }
+                predictions.append(record)
+            except Exception as e:
+                print(f"Error updating hotspot for {city}: {e}")
+                # Skip this city if it fails
+                continue
 
         with self._lock:
             self._predictions = predictions
@@ -132,57 +139,6 @@ class HotspotService:
                 return True
             age = (datetime.now(timezone.utc) - self._last_update).total_seconds()
         return age >= self._update_interval
-
-    def _fetch_solar_data(self, city: str) -> Dict[str, float]:
-        """Fetch solar data for a city using the unified pv_data module.
-        The pv_data.get_data function handles location lookup and API calls.
-        """
-        try:
-            return get_pv_data(city)
-        except Exception:
-            # Fallback to existing fallback logic based on coordinates if needed
-            lat, lon = self._locations.get(city, (0.0, 0.0))
-            return get_fallback_solar_data(lat, lon)
-
-
-    def _predict_power(
-        self,
-        model_source: Optional[object],
-        city: str,
-        month_value: int,
-        solar_data: Dict[str, float],
-    ) -> float:
-        if model_source is None:
-            return 0.0
-
-        try:
-            raw_prediction = prid(
-                model_source,
-                city,
-                month_value,
-                solar_data["poa_direct"],
-                solar_data["poa_sky_diffuse"],
-                solar_data["solar_elevation"],
-                solar_data["wind_speed"],
-                solar_data["temp_air"],
-            )
-        except ValueError:
-            raw_prediction = prid(
-                model_source,
-                "Afzalpur",
-                month_value,
-                solar_data["poa_direct"],
-                solar_data["poa_sky_diffuse"],
-                solar_data["solar_elevation"],
-                solar_data["wind_speed"],
-                solar_data["temp_air"],
-            )
-        except Exception:
-            return 0.0
-
-        array_prediction = np.atleast_1d(raw_prediction).astype(float)
-        array_prediction[array_prediction < 0] = 0.0
-        return float(array_prediction[0]) if array_prediction.size else 0.0
 
 
 __all__ = ["HotspotService", "KARNATAKA_LOCATIONS"]
