@@ -1,6 +1,7 @@
 Flask
 Flask-CORS
 requests
+geopy
 python-dotenv
 scikit-learn
 numpy
