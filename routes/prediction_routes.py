@@ -16,9 +16,9 @@ prediction_bp = Blueprint('prediction', __name__)
 
 try:
     model = joblib.load(Config.MODEL_PATH)
-    print(f"✓ ML Model loaded successfully from {Config.MODEL_PATH}")
+    print(f"[OK] ML Model loaded successfully from {Config.MODEL_PATH}")
 except Exception as e:
-    print(f"✗ Error loading ML model: {e}")
+    print(f"[ERROR] Could not load ML model: {e}")
     model = None
 
 weather_service = WeatherService()
@@ -183,9 +183,9 @@ def predict_solar_power():
         record_id = insert_prediction(Config.DB_PATH, db_data)
 
         if record_id:
-            print(f"✓ Prediction saved with ID: {record_id}")
+            print(f"[OK] Prediction saved with ID: {record_id}")
         else:
-            print("⚠ Warning: Could not save prediction to database")
+            print("[WARN] Could not save prediction to database")
 
         response = {
             'success': True,
@@ -223,7 +223,7 @@ def predict_solar_power():
         return jsonify(response), 200
 
     except Exception as e:
-        print(f"✗ Prediction error: {str(e)}")
+        print(f"[ERROR] Prediction error: {str(e)}")
         return jsonify({
             'error': 'Prediction failed',
             'message': str(e)
@@ -257,7 +257,7 @@ def get_prediction_history():
         }), 200
 
     except Exception as e:
-        print(f"✗ History retrieval error: {str(e)}")
+        print(f"[ERROR] History retrieval error: {str(e)}")
         return jsonify({
             'error': 'Failed to retrieve history',
             'message': str(e)
@@ -272,7 +272,7 @@ def history_page():
         return render_template('history.html', predictions=predictions)
 
     except Exception as e:
-        print(f"✗ Error rendering history page: {str(e)}")
+        print(f"[ERROR] Error rendering history page: {str(e)}")
         return render_template('history.html', predictions=[], error=str(e))
 
 
@@ -305,7 +305,7 @@ def get_karnataka_predictions():
         })
 
     except Exception as exc:
-        print(f"✗ Error fetching Karnataka predictions: {exc}")
+        print(f"[ERROR] Error fetching Karnataka predictions: {exc}")
         return jsonify({
             'error': 'Failed to generate Karnataka predictions',
             'message': str(exc)

@@ -19,7 +19,7 @@ class WeatherService:
         self.base_url = Config.OPENWEATHER_BASE_URL
         
         if not self.api_key:
-            print("⚠ Warning: No OpenWeatherMap API key provided!")
+            print("[WARN] No OpenWeatherMap API key provided!")
     
     def get_weather_by_city(self, city_name):
         """

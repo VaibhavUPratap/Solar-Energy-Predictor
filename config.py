@@ -29,9 +29,9 @@ class Config:
     
     # Default solar parameters (used when real solar data unavailable)
     DEFAULT_SOLAR_PARAMS = {
-        'poa_direct': 800.0,          # W/m² - Direct irradiance on panel
-        'poa_sky_diffuse': 150.0,     # W/m² - Diffuse sky irradiance
-        'poa_ground_diffuse': 50.0,   # W/m² - Ground reflected irradiance
+        'poa_direct': 800.0,          # W/m^2 - Direct irradiance on panel
+        'poa_sky_diffuse': 150.0,     # W/m^2 - Diffuse sky irradiance
+        'poa_ground_diffuse': 50.0,   # W/m^2 - Ground reflected irradiance
         'solar_elevation': 45.0       # Degrees - Sun angle above horizon
     }
     

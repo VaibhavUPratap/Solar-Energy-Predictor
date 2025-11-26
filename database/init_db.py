@@ -21,7 +21,7 @@ def init_database(db_path='database/database.db'):
         db_dir = os.path.dirname(db_path)
         if db_dir and not os.path.exists(db_dir):
             os.makedirs(db_dir)
-            print(f"✓ Created database directory: {db_dir}")
+            print(f"[OK] Created database directory: {db_dir}")
         
         # Connect to database (creates file if doesn't exist)
         conn = sqlite3.connect(db_path)
@@ -46,22 +46,22 @@ def init_database(db_path='database/database.db'):
         ''')
         
         conn.commit()
-        print(f"✓ Database initialized successfully at: {db_path}")
-        print(f"✓ Table 'predictions' created/verified")
+        print(f"[OK] Database initialized successfully at: {db_path}")
+        print("[OK] Table 'predictions' created/verified")
         
         # Display existing record count
         cursor.execute('SELECT COUNT(*) FROM predictions')
         count = cursor.fetchone()[0]
-        print(f"✓ Current predictions in database: {count}")
+        print(f"[OK] Current predictions in database: {count}")
         
         conn.close()
         return True
         
     except sqlite3.Error as e:
-        print(f"✗ Database error: {e}")
+        print(f"[ERROR] Database error: {e}")
         return False
     except Exception as e:
-        print(f"✗ Unexpected error: {e}")
+        print(f"[ERROR] Unexpected error: {e}")
         return False
 
 
@@ -107,7 +107,7 @@ def insert_prediction(db_path, data):
         return record_id
         
     except sqlite3.Error as e:
-        print(f"✗ Error inserting prediction: {e}")
+        print(f"[ERROR] Error inserting prediction: {e}")
         return None
 
 
@@ -141,7 +141,7 @@ def get_recent_predictions(db_path, limit=10):
         return predictions
         
     except sqlite3.Error as e:
-        print(f"✗ Error retrieving predictions: {e}")
+        print(f"[ERROR] Error retrieving predictions: {e}")
         return []
 
 

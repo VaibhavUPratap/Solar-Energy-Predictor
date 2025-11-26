@@ -11,11 +11,11 @@ if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     host = os.getenv('HOST', '127.0.0.1')
 
-    print("\n🌞 Starting SolarEnergyPredictor Server...")
-    print(f"🌐 Access the application at: http://{host}:{port}")
-    print(f"🔧 Debug mode: {Config.DEBUG}")
-    print(f"📊 Database: {Config.DB_PATH}")
-    print("\n⏳ Press CTRL+C to stop the server\n")
+    print("\n[BOOT] Starting SolarEnergyPredictor Server...")
+    print(f"[INFO] Access the application at: http://{host}:{port}")
+    print(f"[INFO] Debug mode: {Config.DEBUG}")
+    print(f"[INFO] Database: {Config.DB_PATH}")
+    print("\n[HINT] Press CTRL+C to stop the server\n")
     
     # Run the Flask development server
     app.run(

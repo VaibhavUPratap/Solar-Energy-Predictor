@@ -68,7 +68,7 @@ def create_app():
             'message': 'An unexpected error occurred'
         }, 500
     
-    print("✓ Flask app configured successfully")
+    print("[OK] Flask app configured successfully")
     print("="*50 + "\n")
     
     return app
