@@ -9,7 +9,7 @@ A production-ready Flask web application that predicts real-time solar power out
 ## 📋 Features
 
 - 🤖 **AI-Powered Predictions**: Uses trained ML model for solar power forecasting
-- 🌍 **Real-Time Weather Data**: Fetches live weather from OpenWeatherMap API
+- 🌍 **Real-Time Weather Data**: Pulls live irradiance + meteorology from Open-Meteo (no API key required)
 - 🗺️ **Interactive Map**: Leaflet.js integration for location visualization
 - 💾 **SQLite Database**: Stores prediction history with timestamps
 - 📊 **History Tracking**: View past predictions with detailed metrics
@@ -59,14 +59,14 @@ SolarEnergyPredictor/
 
 - Python 3.8 or higher
 - pip (Python package manager)
-- OpenWeatherMap API key ([Get free key](https://openweathermap.org/api))
+- Internet access for Open-Meteo and Nominatim APIs (no keys required)
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/SolarEnergyPredictor.git
-   cd SolarEnergyPredictor
+   git clone https://github.com/VaibhavUPratap/Solar-Energy-Predictor.git
+   cd Solar-Energy-Predictor
    ```
 
 2. **Create virtual environment**
@@ -97,9 +97,9 @@ POST `/api/predict` (success)
       "description": "scattered clouds"
    },
    "solar_parameters": {
-      "poa_direct": 480.0,          /* W/m² */
-      "poa_sky_diffuse": 112.5,     /* W/m² */
-      "poa_ground_diffuse": 50.0,   /* W/m² */
+      "poa_direct": 480.0,          /* W/m^2 */
+      "poa_sky_diffuse": 112.5,     /* W/m^2 */
+      "poa_ground_diffuse": 50.0,   /* W/m^2 */
       "solar_elevation": 45.0       /* degrees */
    }
 }
@@ -148,12 +148,12 @@ GET `/api/history` (success)
    pip install -r requirements.txt
    ```
 
-4. **Configure environment variables**
+4. **Configure environment variables (optional)**
    ```bash
-   # Copy .env template and edit with your API key
-   cp .env .env.local
-   # Edit .env and add your OPENWEATHER_KEY
+   # Copy .env template if you want to override defaults like DB_PATH or DEBUG
+   cp .env.example .env
    ```
+   The current build does not require any external API keys; weather and irradiance data come from Open-Meteo.
 
 5. **Create ML model file**
    ```python
@@ -175,7 +175,7 @@ GET `/api/history` (success)
    import os
    os.makedirs('models', exist_ok=True)
    joblib.dump(model, 'models/Linear_Regression.pkl')
-   print('✓ Model created successfully')
+   print('[OK] Model created successfully')
    "
    ```
 
@@ -187,8 +187,8 @@ The application expects a model trained on a specific feature layout:
    - First 240 features are one-hot encodings for locations (location dummy columns).
    - Last 6 features (indices 240..245) are numeric features in this order:
       240: time_stamp (for example, hour of day or a numeric time feature)
-      241: poa_direct (W/m²)
-      242: poa_sky_diffuse (W/m²)
+      241: poa_direct (W/m^2)
+      242: poa_sky_diffuse (W/m^2)
       243: solar_elevation (degrees)
       244: wind_speed (m/s)
       245: temp_air (°C)
@@ -232,7 +232,7 @@ joblib.dump(model, 'models/Linear_Regression.pkl')
 with open('column_names.json', 'w') as f:
       json.dump(columns, f)
 
-print('✓ Model and column_names.json saved')
+print('[OK] Model and column_names.json saved')
 ```
 
 Notes:
@@ -251,6 +251,14 @@ Notes:
    http://127.0.0.1:5000
    ```
 
+## ☁️ Weather & Irradiance Data Sources
+
+- **Open-Meteo Forecast API** supplies hourly temperature, wind, direct and diffuse radiation, cloud cover, humidity, and weather codes. The project requests these fields with `timezone=auto`, so no API key or account is necessary.
+- **PVLib** converts the irradiance + solar position into plane-of-array (POA) values that the ML model consumes.
+- **Location lookup** comes from the bundled `results.csv` coordinates, and falls back to OpenStreetMap's Nominatim geocoder when needed (again, no API key required).
+
+Because all upstream services are free and keyless, a fresh clone can run predictions immediately as long as the machine has internet access.
+
 ## 🔧 Configuration
 
 Edit `.env` file with your settings:
@@ -263,8 +271,7 @@ DEBUG=True
 # Database
 DB_PATH=database/database.db
 
-# OpenWeatherMap API
-OPENWEATHER_KEY=your_api_key_here
+# Weather + irradiance data come from Open-Meteo, so no API key is required.
 ```
 
 ## 📡 API Endpoints
@@ -380,6 +387,13 @@ If you can't start the app with `python run.py`, try these steps first:
    - The app initializes a SQLite DB at `database/database.db` automatically on first run.
    - If DB schema changes or you want a clean slate, stop the server and delete `database/database.db`.
 
+### Windows debugging note
+
+- Reason: Older versions of this repository printed emoji/checkmark characters during startup (for example `✓` and `⚠`). On some Windows developer setups the console encoding defaults to a legacy code page (for example `cp1252`) which cannot encode those glyphs. When Python attempted to print them the process raised a `UnicodeEncodeError` and the Flask server aborted before listening on the API port. This caused clients to receive HTML fallback/error pages and led to the familiar "Unexpected token '<' - not valid JSON" when code tried to parse the response as JSON.
+- Fix: Console output was changed to ASCII-only tags such as `[OK]`, `[WARN]`, and `[ERROR]` across the runtime modules (`run.py`, `app.py`, `routes/prediction_routes.py`, `database/init_db.py`, `services/weather_service.py`). With these changes the Flask app starts reliably under Windows debuggers and returns proper JSON to API clients.
+
+If you still see HTML returned where JSON is expected, confirm the debugger is launching the updated code and that your client is targeting the correct host/port (by default `http://127.0.0.1:5000`).
+
 - 6) Tests
    - pytest is optional. If you want to run tests with pytest:
       ```bash
@@ -408,9 +422,9 @@ If you can't start the app with `python run.py`, try these steps first:
 | city | TEXT | City name |
 | latitude | REAL | Location latitude |
 | longitude | REAL | Location longitude |
-| poa_direct | REAL | Direct irradiance (W/m²) |
-| poa_sky_diffuse | REAL | Sky diffuse irradiance (W/m²) |
-| poa_ground_diffuse | REAL | Ground reflected irradiance (W/m²) |
+| poa_direct | REAL | Direct irradiance (W/m^2) |
+| poa_sky_diffuse | REAL | Sky diffuse irradiance (W/m^2) |
+| poa_ground_diffuse | REAL | Ground reflected irradiance (W/m^2) |
 | solar_elevation | REAL | Sun elevation angle (degrees) |
 | wind_speed | REAL | Wind speed (m/s) |
 | temp_air | REAL | Air temperature (°C) |
@@ -421,7 +435,7 @@ If you can't start the app with `python run.py`, try these steps first:
 - **Backend:** Flask 3.0, SQLite
 - **Frontend:** HTML5, CSS3, JavaScript, Leaflet.js
 - **ML:** Scikit-learn, NumPy, Pandas
-- **APIs:** OpenWeatherMap
+- **APIs:** Open-Meteo Forecast, OpenStreetMap Nominatim
 - **Others:** Python-dotenv, Requests, Flask-CORS
 
 ## 🔒 Security Notes
@@ -503,7 +517,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- OpenWeatherMap for weather data API
+- Open-Meteo for weather + irradiance forecasts
+- OpenStreetMap Nominatim for geocoding fallback
 - Leaflet.js for interactive maps
 - Flask community for excellent documentation
 - Scikit-learn for ML tools
