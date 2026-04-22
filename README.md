@@ -11,7 +11,7 @@ A production-ready Flask web application that predicts real-time solar power out
 - 🤖 **AI-Powered Predictions**: Uses trained ML model for solar power forecasting
 - 🌍 **Real-Time Weather Data**: Pulls live irradiance + meteorology from Open-Meteo (no API key required)
 - 🗺️ **Interactive Map**: Leaflet.js integration for location visualization
-- 💾 **SQLite Database**: Stores prediction history with timestamps
+- 💾 **MongoDB Database**: Stores prediction history with high scalability
 - 📊 **History Tracking**: View past predictions with detailed metrics
 - 🎨 **Modern UI**: Responsive design with dark theme
 - 🔧 **Modular Architecture**: Clean separation of concerns
@@ -21,8 +21,7 @@ A production-ready Flask web application that predicts real-time solar power out
 ```
 SolarEnergyPredictor/
 ├── database/
-│   ├── database.db          # SQLite database (auto-created)
-│   └── init_db.py          # Database initialization script
+│   └── init_db.py          # Database initialization script (MongoDB)
 ├── models/
 │   └── Linear_Regression.pkl  # Trained ML model
 ├── routes/
@@ -58,6 +57,7 @@ SolarEnergyPredictor/
 ### Prerequisites
 
 - Python 3.8 or higher
+- MongoDB (running locally or on Atlas)
 - pip (Python package manager)
 - Internet access for Open-Meteo and Nominatim APIs (no keys required)
 
@@ -66,7 +66,7 @@ SolarEnergyPredictor/
 1. **Clone the repository**
    ```bash
    git clone https://github.com/VaibhavUPratap/Solar-Energy-Predictor.git
-   cd Solar-Energy-Predictor
+     cd Solar-Energy-Predictor
    ```
 
 2. **Create virtual environment**
@@ -268,8 +268,9 @@ Edit `.env` file with your settings:
 SECRET_KEY=your-secret-key-here
 DEBUG=True
 
-# Database
-DB_PATH=database/database.db
+# Database (MongoDB)
+MONGODB_URI=mongodb://localhost:27017/
+MONGODB_DB=solar_energy_db
 
 # Weather + irradiance data come from Open-Meteo, so no API key is required.
 ```
@@ -432,7 +433,7 @@ If you still see HTML returned where JSON is expected, confirm the debugger is l
 
 ## 🎨 Technologies Used
 
-- **Backend:** Flask 3.0, SQLite
+- **Backend:** Flask 3.0, MongoDB
 - **Frontend:** HTML5, CSS3, JavaScript, Leaflet.js
 - **ML:** Scikit-learn, NumPy, Pandas
 - **APIs:** Open-Meteo Forecast, OpenStreetMap Nominatim

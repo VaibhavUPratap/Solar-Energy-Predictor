@@ -7,7 +7,7 @@ import os
 import json
 from joblib import load
 
-def pridictionn(loc):
+def pridictionn(loc, model=None):
     try:
         base_dir = os.path.dirname(__file__)
         results_path = os.path.join(base_dir, "results.csv")
@@ -117,10 +117,7 @@ def pridictionn(loc):
         print(f"temp_air: {temp_air}")
         print(f"wind_speed: {wind_speed}")
 
-        def prid(model_path, loc, time_stamp, poa_direct, poa_sky_diffuse, solar_elev, wind_speed, temp_air):
-            # Load model
-            model = load(model_path)
-        
+        def prid(loaded_model, loc, time_stamp, poa_direct, poa_sky_diffuse, solar_elev, wind_speed, temp_air):
             # Load column names
             with open(os.path.join(base_dir, "column_names.json"), "r") as f:
                 column_names = json.load(f)
@@ -148,15 +145,19 @@ def pridictionn(loc):
         
             xi = xi.reshape(1, -1)
             
-            prediction = model.predict(xi)
+            prediction = loaded_model.predict(xi)
             if prediction < 0:
                 prediction = 0
             return prediction
     
         time_stamp = datetime.datetime.now().month
         
-        model_path = os.path.join(base_dir, "Linear_Regression.pkl")
-        ans = prid(model_path, loc, time_stamp, poa_direct, poa_sky_diffuse, solar_elev, wind_speed, temp_air)
+        if model is None:
+            model_path = os.path.join(base_dir, "Linear_Regression.pkl")
+            model = load(model_path)
+            
+        ans = prid(model, loc, time_stamp, poa_direct, poa_sky_diffuse, solar_elev, wind_speed, temp_air)
+
         
         # Metadata for API response
         metadata = {

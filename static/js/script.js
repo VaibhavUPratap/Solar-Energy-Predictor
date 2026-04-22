@@ -67,6 +67,11 @@ async function makePrediction(city) {
         btnLoader.classList.remove('hidden');
         errorMessage.classList.add('hidden');
         resultsSection.classList.add('hidden');
+        
+        const layoutGrid = document.querySelector('.layout-grid');
+        if (layoutGrid) {
+            layoutGrid.classList.add('results-hidden');
+        }
 
         console.log(`🔍 Fetching prediction for: ${city}`);
 
@@ -163,6 +168,10 @@ function displayResults(data) {
     }
     
     // Show results with animation
+    const layoutGrid = document.querySelector('.layout-grid');
+    if (layoutGrid) {
+        layoutGrid.classList.remove('results-hidden');
+    }
     resultsSection.classList.remove('hidden');
     resultsSection.classList.remove('animate-fadeIn');
     void resultsSection.offsetWidth;

@@ -17,6 +17,8 @@ class Config:
     
     # Database settings
     DB_PATH = os.getenv('DB_PATH', 'database/database.db')
+    MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/')
+    MONGODB_DB = os.getenv('MONGODB_DB', 'solar_energy_db')
     
     # API Keys
     OPENWEATHER_KEY = os.getenv('OPENWEATHER_KEY', '')

@@ -91,13 +91,19 @@ class HotspotService:
         return predictions, last_update
 
     def update_predictions(self) -> List[Dict[str, float]]:
+        from concurrent.futures import ThreadPoolExecutor
+        import time
+        
         predictions: List[Dict[str, float]] = []
         timestamp = datetime.now(timezone.utc)
-
-        for city in self._locations.keys():
+        
+        # Use a list to collect results safely from threads
+        results = []
+        
+        def process_city(city):
             try:
-                # Use unified prediction function
-                predicted_power, solar_data = pridictionn(city)
+                # Use unified prediction function with pre-loaded model
+                predicted_power, solar_data = pridictionn(city, model=self._model)
                 
                 # Map metadata to expected structure
                 weather_code = solar_data.get("weather_code", 0)
@@ -122,16 +128,24 @@ class HotspotService:
                     "poa_ground_diffuse": float(solar_data.get("poa_ground_diffuse", 0.0)),
                     "solar_elevation": float(solar_data.get("solar_elevation", 0.0)),
                 }
-                predictions.append(record)
+                return record
             except Exception as e:
                 print(f"Error updating hotspot for {city}: {e}")
-                # Skip this city if it fails
-                continue
+                return None
+
+        # Execute in parallel
+        max_workers = 10  # Adjust based on server capacity/API limits
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            records = list(executor.map(process_city, self._locations.keys()))
+        
+        # Filter out None results
+        predictions = [r for r in records if r is not None]
 
         with self._lock:
             self._predictions = predictions
             self._last_update = timestamp
         return predictions
+
 
     def _needs_refresh(self) -> bool:
         with self._lock:

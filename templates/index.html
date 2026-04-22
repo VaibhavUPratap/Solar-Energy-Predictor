@@ -31,35 +31,38 @@
         <!-- Hero / intro -->
         <header class="hero">
             <div class="hero-content">
-                <span class="brand-badge">
-                    <span>&#9889;</span>
-                    AI-Assisted Solar Intelligence
-                </span>
+                <div class="brand-badge animate-float-slow">
+                    <span class="badge-icon">&#9889;</span>
+                    <span class="badge-text">AI-Assisted Solar Intelligence</span>
+                </div>
                 <h1 class="hero-title">Solar Energy Predictor</h1>
                 <p class="hero-subtitle">
-                    Plan installations, optimise grid usage, and understand output potential with our blended weather&nbsp;+&nbsp;irradiance model.
+                    Empowering the transition to renewable energy with high-precision, weather-integrated solar output forecasting.
                 </p>
                 <div class="hero-actions">
                     <a href="#predictionForm" class="button-primary">Start a Prediction</a>
                     <a href="/api/history-page" class="button-outline">View Energy History</a>
                 </div>
                 <div class="hero-stats">
-                    <div class="hero-pill"><span class="emoji">&#9728;&#65039;</span>Real-time irradiance synthesis</div>
-                    <div class="hero-pill"><span class="emoji">&#127757;</span>Global city coverage</div>
-                    <div class="hero-pill"><span class="emoji">&#128752;</span>Weather-backed AI forecasts</div>
+                    <div class="hero-pill"><span class="emoji">&#9728;&#65039;</span>Real-time Irradiance Synthesis</div>
+                    <div class="hero-pill"><span class="emoji">&#127757;</span>Global Coverage</div>
+                    <div class="hero-pill"><span class="emoji">&#128752;</span>AI-Driven Insights</div>
                 </div>
             </div>
         </header>
 
         <!-- Main interactive surface -->
-        <section class="layout-grid">
+        <section class="layout-grid results-hidden">
             <!-- Prediction form -->
             <article class="glass-card input-card">
                 <div class="card-header">
-                    <h2><span class="emoji">&#129518;</span>Prediction Console</h2>
+                    <h2>
+                        <span class="badge-icon small">&#129518;</span>
+                        Prediction Console
+                    </h2>
                 </div>
                 <p class="card-subtitle">
-                    Choose any city worldwide to synthesise live meteorological readings and predict expected solar power output for a standard panel.
+                    Select a global location to synthesize live meteorological data and forecast expected solar power output.
                 </p>
                 <form id="predictionForm" class="form-grid mt-6">
                     <div class="input-group">

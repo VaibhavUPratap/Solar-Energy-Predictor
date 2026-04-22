@@ -58,9 +58,9 @@ def predict_solar_power():
             }), 400
 
         try:
-            # Use integrated user-provided function
+            # Use integrated user-provided function with pre-loaded model
             from models.integrated_model import pridictionn
-            predicted_power, solar_data = pridictionn(city_name)
+            predicted_power, solar_data = pridictionn(city_name, model=model)
         except Exception as e:
             print(f"Error in prediction: {e}")
             return jsonify({
