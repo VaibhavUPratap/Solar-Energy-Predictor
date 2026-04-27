@@ -19,19 +19,31 @@ def pridictionn(loc, model=None):
             lat = float(matches.Latitude.iloc[0])
             lon = float(matches.Longitude.iloc[0])
         else:
-            # Fallback to geopy
+            # Try Open-Meteo Geocoding API first (better for cloud deployment)
             try:
-                from geopy.geocoders import Nominatim
-                geolocator = Nominatim(user_agent="geoapi")
-                location = geolocator.geocode(loc)
-                if location:
-                    lat, lon = location.latitude, location.longitude
+                print(f"Geocoding '{loc}' via Open-Meteo...")
+                geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={loc}&count=1&language=en&format=json"
+                geo_res = requests.get(geo_url, timeout=10).json()
+                
+                if "results" in geo_res and len(geo_res["results"]) > 0:
+                    lat = float(geo_res["results"][0]["latitude"])
+                    lon = float(geo_res["results"][0]["longitude"])
+                    print(f"[OK] Found {loc} via Open-Meteo: {lat}, {lon}")
                 else:
-                    print("loc not found via geopy")
-                    raise ValueError(f"Location '{loc}' not found")
+                    # Fallback to geopy
+                    print(f"Open-Meteo couldn't find '{loc}', falling back to geopy...")
+                    from geopy.geocoders import Nominatim
+                    geolocator = Nominatim(user_agent=f"SolarEnergyPredictor_{loc}")
+                    location = geolocator.geocode(loc, timeout=10)
+                    if location:
+                        lat, lon = location.latitude, location.longitude
+                        print(f"[OK] Found {loc} via geopy: {lat}, {lon}")
+                    else:
+                        print("loc not found via geopy")
+                        raise ValueError(f"Location '{loc}' not found")
             except Exception as e:
-                print(f"Geopy error: {e}")
-                raise ValueError(f"Location '{loc}' not found and geocoding failed")
+                print(f"Geocoding error for '{loc}': {e}")
+                raise ValueError(f"Location '{loc}' not found or geocoding service unavailable")
 
         # --------------------------
         # 2) Current time (UTC, rounded to nearest hour)
