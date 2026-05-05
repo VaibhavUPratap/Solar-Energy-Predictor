@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  web:
+    # Tell Docker Compose to build the image using the Dockerfile in this directory
+    build: .
+    
+    # Give the running container a clean name
+    container_name: pv-app-container
+    
+    # Map port 10000 on your machine to port 10000 in the container
+    ports:
+      - "10000:10000"
+    
+    # You can pass environment variables here (optional, since it's already in the Dockerfile)
+    environment:
+      - PORT=10000
+
+    # ---------------------------------------------------------
+    # LOCAL DEVELOPMENT HOT-RELOADING
+    # Uncomment the two lines below to sync your local files 
+    # directly into the container. This means you don't have 
+    # to rebuild the image every time you edit your Python code!
+    # ---------------------------------------------------------
+    volumes:
+      - .:/app

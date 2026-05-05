@@ -456,16 +456,24 @@ pip install gunicorn
 gunicorn -w 4 -b 0.0.0.0:5000 app:app
 ```
 
-### Using Docker
+### Using Docker (Recommended)
 
-```dockerfile
-FROM python:3.9-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["python", "run.py"]
-```
+The easiest way to run the application is using Docker Compose.
+
+1. **Build and start the container:**
+   ```bash
+   docker compose up --build
+   ```
+
+2. **Access the application:**
+   Open your browser and navigate to: `http://localhost:10000`
+
+3. **Stop the container:**
+   ```bash
+   docker compose down
+   ```
+
+*(Note: For local development, you can uncomment the `volumes` section in `docker-compose.yml` to enable hot-reloading of Python code without rebuilding the image).*
 
 ## 🛠️ Development
 
@@ -511,10 +519,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Vaibhav U Pratap** - *Web Dev*
-- **Zishaanmalik** - *ML Model Training*
-- **Tharun V N** - *Front-end*
-- **Rohit V** - *Database*
+- **Vaibhav U Pratap**
 
 ## 🙏 Acknowledgments
 
